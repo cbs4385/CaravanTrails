@@ -48,6 +48,7 @@ public class GameController : MonoBehaviour
 
     TownPresenter        _townView;
     TradeRouteVisualizer _routeViz;
+    CaravanManager       _caravanMgr;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -55,8 +56,9 @@ public class GameController : MonoBehaviour
 
     void Start()
     {
-        _townView  = FindObjectOfType<TownPresenter>();
-        _routeViz  = FindObjectOfType<TradeRouteVisualizer>();
+        _townView   = FindObjectOfType<TownPresenter>();
+        _routeViz   = FindObjectOfType<TradeRouteVisualizer>();
+        _caravanMgr = FindObjectOfType<CaravanManager>();
         _townView?.ResetVisuals();
     }
 
@@ -95,6 +97,9 @@ public class GameController : MonoBehaviour
         });
         _pendingOrgDelta = 0;
         _sfx?.PlayTick();
+        var tele = _sim.Telemetry;
+        if (_caravanMgr != null && tele.Count > 0)
+            _caravanMgr.OnTick(tele[tele.Count - 1].TrafficVolume);
         Refresh();
     }
 
