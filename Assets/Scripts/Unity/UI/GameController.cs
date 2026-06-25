@@ -126,8 +126,8 @@ public class GameController : MonoBehaviour
         _qualTxt.text    = $"<color=#907050>Town</color>     {Bar(s.TownQuality)}  {s.TownQuality:P0}";
         _safetyTxt.text  = $"<color=#907050>Safety</color>   {Bar(s.Safety)}  {s.Safety:P0}";
         _repTxt.text     = $"<color=#907050>Rep</color>      {Bar(s.Reputation)}  {s.Reputation:P0}";
-        _heatTxt.text    = $"Suspicion {HeatBar(s.Heat)}";
-        _heatTxt.color   = HeatColor(s.Heat);
+        _heatTxt.text  = HeatMood(s.Heat);
+        _heatTxt.color = HeatColor(s.Heat);
         _orgLvTxt.text   = $"<color=#907050>Org Crime</color>  <b>Lv {s.OrganizedCrimeLevel}</b>";
 
         if (s.IsGameOver)
@@ -149,12 +149,13 @@ public class GameController : MonoBehaviour
 
     // ── Display helpers ───────────────────────────────────────────────────────
 
-    // Pillar 4: coarse only — never reveal exact Heat value or audit threshold
-    static string HeatBar(float h)
+    // Pillar 4: never reveal exact Heat value or audit threshold — ambient mood only
+    static string HeatMood(float h)
     {
-        string lbl = h < 20 ? "Low" : h < 45 ? "Elevated" : h < 70 ? "High" : "CRITICAL";
-        int on = Mathf.RoundToInt(Mathf.Clamp01(h / 100f) * 8);
-        return new string('█', on) + new string('░', 8 - on) + "  " + lbl;
+        if (h < 20) return "The markets are peaceful.";
+        if (h < 45) return "Whispers stir in the bazaar.";
+        if (h < 70) return "Officials ask pointed questions.";
+        return "A shadow falls over the prefecture.";
     }
 
     static Color HeatColor(float h) =>
