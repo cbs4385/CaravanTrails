@@ -19,6 +19,8 @@ public class GameController : MonoBehaviour
     int              _pendingOrgDelta;
     EventOption      _pendingEventChoice;
     UpgradePurchase  _pendingUpgrade;
+    int              _eventsPaid;
+    int              _eventsResisted;
     bool             _autoTick;
     float       _autoTimer;
     const float AutoInterval = 0.75f;
@@ -87,6 +89,8 @@ public class GameController : MonoBehaviour
         _pendingOrgDelta       = 0;
         _pendingEventChoice    = EventOption.None;
         _pendingUpgrade        = UpgradePurchase.None;
+        _eventsPaid            = 0;
+        _eventsResisted        = 0;
         _autoTimer             = 0f;
         _autoTick              = false;
         _gameOverSoundPlayed   = false;
@@ -358,13 +362,13 @@ public class GameController : MonoBehaviour
         // Option buttons — side by side
         float bw = (CW - 56f) / 2f;
         var btnA = MkBtn(card, "Option A", 18f, 18f, bw, 46f,
-            () => { _pendingEventChoice = EventOption.OptionA; _eventPanel.SetActive(false); },
+            () => { _eventsPaid++; _pendingEventChoice = EventOption.OptionA; _eventPanel.SetActive(false); },
             new Color(0.22f, 0.44f, 0.18f));
         _evOptALbl = btnA.GetComponentInChildren<Text>();
         _evOptALbl.fontSize = 12;
 
         var btnB = MkBtn(card, "Option B", 20f + bw + 18f, 18f, bw, 46f,
-            () => { _pendingEventChoice = EventOption.OptionB; _eventPanel.SetActive(false); },
+            () => { _eventsResisted++; _pendingEventChoice = EventOption.OptionB; _eventPanel.SetActive(false); },
             new Color(0.48f, 0.20f, 0.08f));
         _evOptBLbl = btnB.GetComponentInChildren<Text>();
         _evOptBLbl.fontSize = 12;
@@ -441,7 +445,7 @@ public class GameController : MonoBehaviour
 
     void BuildGameOverScreen(RectTransform root)
     {
-        const float CW = 520f, CH = 390f;
+        const float CW = 520f, CH = 420f;
 
         // Full-screen dim
         var overlayGO = new GameObject("GameOver");
@@ -479,8 +483,8 @@ public class GameController : MonoBehaviour
         BgImg(MkRT(card, "Div", 20f, CH - 182f, CW - 40f, 1f),
             new Color(0.42f, 0.30f, 0.12f));
 
-        // Stats block (6 lines of monospaced-ish text)
-        _goStatsTxt = MkTxt(card, "", 14, 28f, 58f, CW - 56f, 148f,
+        // Stats block (up to 8 lines)
+        _goStatsTxt = MkTxt(card, "", 13, 28f, 58f, CW - 56f, 172f,
             TextAnchor.UpperLeft, new Color(0.88f, 0.80f, 0.62f));
 
         // Play Again button
@@ -509,13 +513,27 @@ public class GameController : MonoBehaviour
 
         _goSubTxt.text = EndReasonFlavour(s.EndReason);
 
+        int nAudit = 0, nRival = 0, nMerchant = 0, nInspector = 0;
+        foreach (var r in _sim.Telemetry)
+        {
+            if      (r.EventFired == GameCore.Events.EventType.AuditWarning)      nAudit++;
+            else if (r.EventFired == GameCore.Events.EventType.RivalIncursion)    nRival++;
+            else if (r.EventFired == GameCore.Events.EventType.MerchantComplaint) nMerchant++;
+            else if (r.EventFired == GameCore.Events.EventType.InspectorVisit)    nInspector++;
+        }
+        int nTotal = nAudit + nRival + nMerchant + nInspector;
+        string eventLines = nTotal == 0 ? "" :
+            $"\nEvents faced      {nTotal}  ({_eventsPaid} paid · {_eventsResisted} refused)\n" +
+            $"  Audit {nAudit}  Rival {nRival}  Guild {nMerchant}  Inspector {nInspector}";
+
         _goStatsTxt.text =
             $"Ticks survived    {s.Tick}\n" +
             $"Final purse       §{s.Purse:N0}\n" +
             $"Town coffers      §{s.Coffers:N0}\n" +
             $"Town quality      {Bar(s.TownQuality)}  {s.TownQuality:P0}\n" +
             $"Safety            {Bar(s.Safety)}  {s.Safety:P0}\n" +
-            $"Reputation        {Bar(s.Reputation)}  {s.Reputation:P0}";
+            $"Reputation        {Bar(s.Reputation)}  {s.Reputation:P0}" +
+            eventLines;
 
         _statusTxt.text = string.Empty;
     }
