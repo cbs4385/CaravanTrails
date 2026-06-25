@@ -90,15 +90,15 @@ public class GameController : MonoBehaviour
     void Refresh()
     {
         var s = _sim.State;
-        _tickTxt.text    = $"Tick {s.Tick}";
-        _purseTxt.text   = $"Purse    §{s.Purse:N0}";
-        _coffersTxt.text = $"Coffers  §{s.Coffers:N0}";
-        _qualTxt.text    = $"Town     {Bar(s.TownQuality)} {s.TownQuality:P0}";
-        _safetyTxt.text  = $"Safety   {Bar(s.Safety)} {s.Safety:P0}";
-        _repTxt.text     = $"Rep      {Bar(s.Reputation)} {s.Reputation:P0}";
+        _tickTxt.text    = $"Tick  <b>{s.Tick}</b>";
+        _purseTxt.text   = $"<color=#907050>Purse</color>    <b>§{s.Purse:N0}</b>";
+        _coffersTxt.text = $"<color=#907050>Coffers</color>  <b>§{s.Coffers:N0}</b>";
+        _qualTxt.text    = $"<color=#907050>Town</color>     {Bar(s.TownQuality)}  {s.TownQuality:P0}";
+        _safetyTxt.text  = $"<color=#907050>Safety</color>   {Bar(s.Safety)}  {s.Safety:P0}";
+        _repTxt.text     = $"<color=#907050>Rep</color>      {Bar(s.Reputation)}  {s.Reputation:P0}";
         _heatTxt.text    = $"Suspicion {HeatBar(s.Heat)}";
         _heatTxt.color   = HeatColor(s.Heat);
-        _orgLvTxt.text   = $"Org Crime  Lv {s.OrganizedCrimeLevel}";
+        _orgLvTxt.text   = $"<color=#907050>Org Crime</color>  <b>Lv {s.OrganizedCrimeLevel}</b>";
 
         if (s.IsGameOver)
             ShowGameOverPanel(s);
@@ -179,7 +179,7 @@ public class GameController : MonoBehaviour
         titleRT.offsetMin = new Vector2(0f, -35f);
         titleRT.offsetMax = Vector2.zero;
         BgImg(titleRT, new Color(0.10f, 0.06f, 0.03f, 0.97f));
-        MkTxt(titleRT, "The Prefect's Cut", 16, 0, 0, PW, 35, TextAnchor.MiddleCenter, new Color(0.96f, 0.88f, 0.68f));
+        MkTxt(titleRT, "The Prefect's Cut", 18, 0, 0, PW, 35, TextAnchor.MiddleCenter, new Color(1.00f, 0.92f, 0.72f));
 
         // Right panel: anchored to right screen edge, full height
         var rpGO = new GameObject("State");
@@ -197,7 +197,7 @@ public class GameController : MonoBehaviour
         const float xp = 10f, cw = PW - 20f;
         float y = 670f;
 
-        MkTxt(lp, "─ CONTROLS ─", 12, xp, y, cw, 18f, TextAnchor.MiddleLeft, new Color(0.96f, 0.78f, 0.42f));
+        MkTxt(lp, "─ CONTROLS ─", 13, xp, y, cw, 18f, TextAnchor.MiddleLeft, new Color(1.00f, 0.85f, 0.45f));
         y -= 24f;
 
         SliderRow(lp, "Tax Rate",     ref y, xp, cw, 0f, 0.60f, 0.15f, v => _taxVal.text   = $"{v:P0}",  out _taxSl,   out _taxVal);
@@ -206,13 +206,13 @@ public class GameController : MonoBehaviour
         SliderRow(lp, "Street crime", ref y, xp, cw, 0f, 1.00f, 0.00f, v => _unorgVal.text = $"{v:P0}",  out _unorgSl, out _unorgVal);
 
         y -= 6f;
-        MkTxt(lp, "Org Crime", 12, xp, y, 85f, 26f, TextAnchor.MiddleLeft, Color.white);
+        MkTxt(lp, "Org Crime", 13, xp, y, 85f, 26f, TextAnchor.MiddleLeft, new Color(0.85f, 0.74f, 0.52f));
         MkBtn(lp, "−", xp + 90f, y, 30f, 26f, () => _pendingOrgDelta--);
         MkBtn(lp, "+", xp + 125f, y, 30f, 26f, () => _pendingOrgDelta++);
         y -= 34f;
 
         y -= 8f;
-        MkBtn(lp, "▶  NEXT TICK", xp, y, cw, 38f, DoTick, new Color(0.52f, 0.34f, 0.08f));
+        MkBtn(lp, "▶  NEXT TICK", xp, y, cw, 40f, DoTick, new Color(0.62f, 0.40f, 0.10f));
         y -= 46f;
 
         var autoBtn = MkBtn(lp, "Auto: OFF", xp, y, 130f, 26f, ToggleAuto, new Color(0.36f, 0.22f, 0.08f));
@@ -224,14 +224,16 @@ public class GameController : MonoBehaviour
         const float rx = 10f, tw = PW - 20f;
         float ry = 680f;
 
-        MkTxt(rp, "─ STATE ─", 12, rx, ry, tw, 18f, TextAnchor.MiddleLeft, new Color(0.96f, 0.78f, 0.42f));
+        MkTxt(rp, "─ STATE ─", 13, rx, ry, tw, 18f, TextAnchor.MiddleLeft, new Color(1.00f, 0.85f, 0.45f));
         ry -= 24f;
 
-        _tickTxt    = MkTxt(rp, "Tick 0", 15, rx, ry, tw, 22f, TextAnchor.MiddleLeft, new Color(0.96f, 0.84f, 0.54f));
-        ry -= 32f;
+        _tickTxt    = MkTxt(rp, "Tick  <b>0</b>", 17, rx, ry, tw, 24f, TextAnchor.MiddleLeft, new Color(1.00f, 0.88f, 0.58f));
+        ry -= 34f;
 
         _purseTxt   = StatLine(rp, rx, tw, ref ry);
+        _purseTxt.color = new Color(1.00f, 0.88f, 0.55f);
         _coffersTxt = StatLine(rp, rx, tw, ref ry);
+        _coffersTxt.color = new Color(1.00f, 0.88f, 0.55f);
 
         ry -= 6f;
         BgImg(MkRT(rp, "Div1", rx, ry, tw - 24f, 1f), new Color(0.42f, 0.30f, 0.12f));
