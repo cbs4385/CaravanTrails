@@ -35,6 +35,11 @@ public class GameController : MonoBehaviour
     GameObject _gameOverPanel;
     Text       _goIconTxt, _goTitleTxt, _goSubTxt, _goStatsTxt;
 
+    // ── Audio ─────────────────────────────────────────────────────────────────
+
+    SoundManager _sfx;
+    bool         _gameOverSoundPlayed;
+
     // ── Town view ─────────────────────────────────────────────────────────────
 
     TownPresenter        _townView;
@@ -42,7 +47,7 @@ public class GameController : MonoBehaviour
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-    void Awake()  { NewGame(); BuildUI(); Refresh(); }
+    void Awake()  { NewGame(); BuildUI(); Refresh(); _sfx = gameObject.AddComponent<SoundManager>(); }
 
     void Start()
     {
@@ -64,9 +69,10 @@ public class GameController : MonoBehaviour
     {
         var cfg = ConfigAsset != null ? ConfigAsset.Config : new SimConfig();
         _sim = new Simulator(cfg, Seed);
-        _pendingOrgDelta = 0;
-        _autoTimer = 0f;
-        _autoTick  = false;
+        _pendingOrgDelta       = 0;
+        _autoTimer             = 0f;
+        _autoTick              = false;
+        _gameOverSoundPlayed   = false;
         if (_autoLbl != null) _autoLbl.text = "Auto: OFF";
         _gameOverPanel?.SetActive(false);
         _townView?.ResetVisuals();
@@ -84,6 +90,7 @@ public class GameController : MonoBehaviour
             OrganizedCrimeLevelDelta  = _pendingOrgDelta,
         });
         _pendingOrgDelta = 0;
+        _sfx?.PlayTick();
         Refresh();
     }
 
@@ -314,6 +321,11 @@ public class GameController : MonoBehaviour
     {
         _gameOverPanel.SetActive(true);
         bool win = s.EndReason == EndReason.WealthWin;
+        if (!_gameOverSoundPlayed)
+        {
+            _gameOverSoundPlayed = true;
+            if (win) _sfx?.PlayWin(); else _sfx?.PlayLose();
+        }
 
         _goIconTxt.text  = win ? "★" : "✕";
         _goIconTxt.color = win ? new Color(1.00f, 0.85f, 0.15f) : new Color(1.00f, 0.32f, 0.18f);
