@@ -7,16 +7,17 @@ using UnityEngine;
 // no code changes — just keep the child names consistent.
 public class TownPresenter : MonoBehaviour
 {
-    GameObject _market, _palace, _gate, _guardPost, _shadow, _fountain;
+    GameObject _market, _palace, _gate, _guardPost, _shadow, _shadyFigure, _fountain;
 
     void Awake()
     {
-        _market   = Child("Market");
-        _palace   = Child("Palace");
-        _gate     = Child("Gate");
-        _guardPost = Child("GuardPost");
-        _shadow   = Child("ShadowDistrict");
-        _fountain = Child("Fountain");
+        _market      = Child("Market");
+        _palace      = Child("Palace");
+        _gate        = Child("Gate");
+        _guardPost   = Child("GuardPost");
+        _shadow      = Child("ShadowDistrict");
+        _shadyFigure = Child("ShadyFigure");
+        _fountain    = Child("Fountain");
     }
 
     // Called by GameController each tick and on new game.
@@ -45,11 +46,15 @@ public class TownPresenter : MonoBehaviour
 
     void RefreshShadow(int orgLevel)
     {
-        if (_shadow == null) return;
-        _shadow.SetActive(orgLevel > 0);
-        if (orgLevel > 0)
-            SetColor(_shadow, Color.Lerp(ShadowDim, ShadowBright,
-                Mathf.Clamp01(orgLevel / 3f)));
+        bool active = orgLevel > 0;
+        if (_shadow != null)
+        {
+            _shadow.SetActive(active);
+            if (active)
+                SetColor(_shadow, Color.Lerp(ShadowDim, ShadowBright,
+                    Mathf.Clamp01(orgLevel / 3f)));
+        }
+        if (_shadyFigure != null) _shadyFigure.SetActive(active);
     }
 
     static readonly int BaseColorID = Shader.PropertyToID("_BaseColor");
