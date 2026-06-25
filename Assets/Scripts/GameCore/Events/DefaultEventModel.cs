@@ -5,29 +5,58 @@ namespace GameCore.Events
 {
     public class DefaultEventModel : IEventModel
     {
+        // ── Flavor pools (picked by seeded rng for replay variety) ────────────
+
+        static readonly string[] s_auditBodies =
+        {
+            "A tax assessor from the capital has arrived asking pointed questions about provincial revenue.",
+            "Word reaches you: imperial accountants have been examining the trade ledgers from last season.",
+            "A courier bearing the imperial seal arrived this morning. The auditors will call within the week.",
+        };
+
+        static readonly string[] s_rivalBodies =
+        {
+            "A rival organization has sent word: pay tribute or they will undermine your network.",
+            "One of your street contacts reports a rival gang moving into the eastern quarter. They want a cut.",
+            "A well-dressed stranger left a sealed note at the palace gate. The terms are clear: tribute, or consequences.",
+        };
+
+        static readonly string[] s_merchantBodies =
+        {
+            "The guild master has filed a formal protest: traders are avoiding the route due to extortion.",
+            "Three prominent merchants have petitioned the provincial council, citing irregular taxation on the road.",
+            "A delegation from the Merchant Brotherhood arrived at your offices. Business on the route is down sharply.",
+        };
+
+        static readonly string[] s_inspectorBodies =
+        {
+            "An inspector from the capital tours the province. His report could make or break your position.",
+            "The Emperor has dispatched his personal auditor to review provincial administration. He arrives tomorrow.",
+            "A fastidious official with capital connections has taken up residence at the inn. He has been asking questions.",
+        };
+
+        // ── IEventModel ───────────────────────────────────────────────────────
+
         public PendingEvent TryFireEvent(WorldState state, SimConfig config, Random rng)
         {
             if (!config.EnableEvents) return null;
             if (state.PendingEvent != null) return null;
 
-            // Priority: Inspector > AuditWarning > RivalIncursion > MerchantComplaint.
-            // Each check is independent — only one event fires per tick.
-
             if (state.Tick >= config.InspectorVisitStartTick
                 && rng.NextDouble() < config.InspectorVisitChance)
-                return MakeInspectorVisit(config);
+                return MakeInspectorVisit(config, rng);
 
             if (state.Heat > config.AuditWarningHeatThreshold
                 && rng.NextDouble() < config.AuditWarningChance)
-                return MakeAuditWarning(config);
+                return MakeAuditWarning(config, rng);
 
             if (state.OrganizedCrimeLevel >= 1
                 && rng.NextDouble() < config.RivalIncursionChance)
-                return MakeRivalIncursion(config);
+                return MakeRivalIncursion(config, rng);
 
             if (state.Reputation < config.MerchantComplaintRepThreshold
                 && rng.NextDouble() < config.MerchantComplaintChance)
-                return MakeMerchantComplaint(config);
+                return MakeMerchantComplaint(config, rng);
 
             return null;
         }
@@ -88,44 +117,46 @@ namespace GameCore.Events
             state.PendingEvent = null;
         }
 
-        static PendingEvent MakeAuditWarning(SimConfig c) => new PendingEvent
+        // ── Event constructors ────────────────────────────────────────────────
+
+        static PendingEvent MakeAuditWarning(SimConfig c, Random rng) => new PendingEvent
         {
             Type         = EventType.AuditWarning,
             Headline     = "Imperial Auditors Spotted",
-            BodyText     = "A tax assessor from the capital has arrived asking pointed questions about provincial revenue.",
+            BodyText     = s_auditBodies[rng.Next(s_auditBodies.Length)],
             OptionALabel = $"Spread coin  (-§{c.AuditWarningBribeCost:0} purse, -{c.AuditWarningBribeHeatReduction:0} heat)",
             OptionBLabel = $"Stonewall them  (+{c.AuditWarningIgnoreHeatPenalty:0} heat)",
             OptionACost  = c.AuditWarningBribeCost,
             OptionBEffect= c.AuditWarningIgnoreHeatPenalty,
         };
 
-        static PendingEvent MakeRivalIncursion(SimConfig c) => new PendingEvent
+        static PendingEvent MakeRivalIncursion(SimConfig c, Random rng) => new PendingEvent
         {
             Type         = EventType.RivalIncursion,
             Headline     = "Rival Gang Demands Tribute",
-            BodyText     = "A rival organization has sent word: pay tribute or they will undermine your network.",
+            BodyText     = s_rivalBodies[rng.Next(s_rivalBodies.Length)],
             OptionALabel = $"Pay tribute  (-§{c.RivalIncursionTributeCost:0} purse)",
             OptionBLabel = $"Refuse  (-{c.RivalIncursionRefuseSafetyPenalty:P0} safety)",
             OptionACost  = c.RivalIncursionTributeCost,
             OptionBEffect= c.RivalIncursionRefuseSafetyPenalty,
         };
 
-        static PendingEvent MakeMerchantComplaint(SimConfig c) => new PendingEvent
+        static PendingEvent MakeMerchantComplaint(SimConfig c, Random rng) => new PendingEvent
         {
             Type         = EventType.MerchantComplaint,
             Headline     = "Merchant Guild Complains",
-            BodyText     = "The guild master has filed a formal protest: traders are avoiding the route due to extortion.",
+            BodyText     = s_merchantBodies[rng.Next(s_merchantBodies.Length)],
             OptionALabel = $"Compensate guild  (-§{c.MerchantComplaintCompensationCost:0} purse)",
             OptionBLabel = $"Dismiss complaint  (-{c.MerchantComplaintDismissRepPenalty:P0} rep)",
             OptionACost  = c.MerchantComplaintCompensationCost,
             OptionBEffect= c.MerchantComplaintDismissRepPenalty,
         };
 
-        static PendingEvent MakeInspectorVisit(SimConfig c) => new PendingEvent
+        static PendingEvent MakeInspectorVisit(SimConfig c, Random rng) => new PendingEvent
         {
             Type         = EventType.InspectorVisit,
             Headline     = "Visiting Imperial Inspector",
-            BodyText     = "An inspector from the capital tours the province. His report could make or break your position.",
+            BodyText     = s_inspectorBodies[rng.Next(s_inspectorBodies.Length)],
             OptionALabel = $"Gift the inspector  (-§{c.InspectorGiftCost:0} purse, -{c.InspectorGiftHeatReduction:0} heat)",
             OptionBLabel = $"Stonewall  (+{c.InspectorStonewallHeatPenalty:0} heat)",
             OptionACost  = c.InspectorGiftCost,
