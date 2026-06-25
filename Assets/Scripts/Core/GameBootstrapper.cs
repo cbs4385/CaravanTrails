@@ -21,12 +21,22 @@ public class GameBootstrapper : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void AutoCreate()
     {
-        if (FindFirstObjectByType<GameBootstrapper>() == null)
-            new GameObject("Bootstrapper").AddComponent<GameBootstrapper>();
+        if (FindFirstObjectByType<GameBootstrapper>() != null) return;
+        // Phase 3 scene uses GameController directly — skip the board-game bootstrap.
+        if (FindFirstObjectByType<GameController>() != null) return;
+        new GameObject("Bootstrapper").AddComponent<GameBootstrapper>();
     }
 
     void Awake()
     {
+        // Phase 3 scene: GameController drives the sim and owns the isometric camera.
+        // Bootstrapper auto-created itself but must not override the scene setup.
+        if (FindFirstObjectByType<GameController>() != null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         var cfg = BuildConfig();
 
         _catalogBuildings = DefaultBuildings();
@@ -298,10 +308,16 @@ public class GameBootstrapper : MonoBehaviour
 
     static void SetupCamera()
     {
-        // Disable the default scene camera so Camera.main returns our new one immediately
         var existing = Camera.main;
-        if (existing != null) existing.gameObject.SetActive(false);
+        if (existing != null)
+        {
+            // A scene camera is already configured — keep it. Just ensure AudioListener exists.
+            if (existing.GetComponent<AudioListener>() == null)
+                existing.gameObject.AddComponent<AudioListener>();
+            return;
+        }
 
+        // No scene camera — create a default top-down board-game camera.
         var go  = new GameObject("Main Camera") { tag = "MainCamera" };
         var cam = go.AddComponent<Camera>();
         cam.orthographic     = true;
@@ -310,13 +326,11 @@ public class GameBootstrapper : MonoBehaviour
         cam.backgroundColor  = new Color(0.07f, 0.07f, 0.12f);
         cam.farClipPlane     = 50f;
 
-        // Look straight down from above the board
         go.transform.position = new Vector3(0f, 20f, 0f);
         go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
 
         go.AddComponent<AudioListener>();
 
-        // Ensure there's at least one directional light for any Lit-shader objects
         if (FindFirstObjectByType<Light>() == null)
         {
             var lightGO = new GameObject("Directional Light");
