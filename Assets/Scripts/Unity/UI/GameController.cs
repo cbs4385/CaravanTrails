@@ -15,10 +15,11 @@ public class GameController : MonoBehaviour
 
     // ── Sim ──────────────────────────────────────────────────────────────────
 
-    Simulator   _sim;
-    int         _pendingOrgDelta;
-    EventOption _pendingEventChoice;
-    bool        _autoTick;
+    Simulator        _sim;
+    int              _pendingOrgDelta;
+    EventOption      _pendingEventChoice;
+    UpgradePurchase  _pendingUpgrade;
+    bool             _autoTick;
     float       _autoTimer;
     const float AutoInterval = 0.75f;
 
@@ -31,6 +32,7 @@ public class GameController : MonoBehaviour
     Text   _tickTxt, _purseTxt, _coffersTxt, _heatTxt;
     Text   _qualTxt, _safetyTxt, _repTxt, _orgLvTxt, _statusTxt;
     Text   _autoLbl;
+    Text   _collUpgTxt, _heatUpgTxt;
 
     // ── Title screen ──────────────────────────────────────────────────────────
 
@@ -84,6 +86,7 @@ public class GameController : MonoBehaviour
         _sim = new Simulator(cfg, Seed);
         _pendingOrgDelta       = 0;
         _pendingEventChoice    = EventOption.None;
+        _pendingUpgrade        = UpgradePurchase.None;
         _autoTimer             = 0f;
         _autoTick              = false;
         _gameOverSoundPlayed   = false;
@@ -104,9 +107,11 @@ public class GameController : MonoBehaviour
             BribeAmount               = _bribeSl.value,
             UnorganizedCrimeIntensity = _unorgSl.value,
             OrganizedCrimeLevelDelta  = _pendingOrgDelta,
+            Upgrade                   = _pendingUpgrade,
             EventChoice               = _pendingEventChoice,
         });
         _pendingOrgDelta    = 0;
+        _pendingUpgrade     = UpgradePurchase.None;
         _pendingEventChoice = EventOption.None;
         _sfx?.PlayTick();
         var tele = _sim.Telemetry;
@@ -129,6 +134,14 @@ public class GameController : MonoBehaviour
         _heatTxt.text  = HeatMood(s.Heat);
         _heatTxt.color = HeatColor(s.Heat);
         _orgLvTxt.text   = $"<color=#907050>Org Crime</color>  <b>Lv {s.OrganizedCrimeLevel}</b>";
+
+        var cfg = _sim.Config;
+        float collCost = cfg.UpgradeCollectionCostBase
+            * Mathf.Pow(cfg.UpgradeCollectionCostScalePerLevel, s.CollectionUpgradeLevel);
+        float heatCost = cfg.UpgradeHeatDecayCostBase
+            * Mathf.Pow(cfg.UpgradeHeatDecayCostScalePerLevel, s.HeatDecayUpgradeLevel);
+        _collUpgTxt.text = $"Collection  Lv {s.CollectionUpgradeLevel}  §{collCost:F0}";
+        _heatUpgTxt.text = $"Heat Decay  Lv {s.HeatDecayUpgradeLevel}  §{heatCost:F0}";
 
         if (s.IsGameOver)
             ShowGameOverPanel(s);
@@ -241,6 +254,22 @@ public class GameController : MonoBehaviour
         MkBtn(lp, "−", xp + 90f, y, 30f, 26f, () => _pendingOrgDelta--);
         MkBtn(lp, "+", xp + 125f, y, 30f, 26f, () => _pendingOrgDelta++);
         y -= 34f;
+
+        y -= 6f;
+        MkTxt(lp, "─ UPGRADES ─", 11, xp, y, cw, 16f, TextAnchor.MiddleLeft, new Color(1.00f, 0.85f, 0.45f));
+        y -= 20f;
+
+        _collUpgTxt = MkTxt(lp, "Collection  Lv 0  §60", 12, xp, y, cw - 54f, 22f,
+            TextAnchor.MiddleLeft, new Color(0.80f, 0.70f, 0.54f));
+        MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
+            () => _pendingUpgrade = UpgradePurchase.Collection, new Color(0.30f, 0.20f, 0.08f));
+        y -= 28f;
+
+        _heatUpgTxt = MkTxt(lp, "Heat Decay  Lv 0  §80", 12, xp, y, cw - 54f, 22f,
+            TextAnchor.MiddleLeft, new Color(0.80f, 0.70f, 0.54f));
+        MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
+            () => _pendingUpgrade = UpgradePurchase.HeatDecay, new Color(0.30f, 0.20f, 0.08f));
+        y -= 28f;
 
         y -= 8f;
         MkBtn(lp, "▶  NEXT TICK", xp, y, cw, 40f, DoTick, new Color(0.62f, 0.40f, 0.10f));
