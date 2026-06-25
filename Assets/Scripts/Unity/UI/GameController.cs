@@ -30,6 +30,11 @@ public class GameController : MonoBehaviour
     Text   _qualTxt, _safetyTxt, _repTxt, _orgLvTxt, _statusTxt;
     Text   _autoLbl;
 
+    // ── Game-over overlay ─────────────────────────────────────────────────────
+
+    GameObject _gameOverPanel;
+    Text       _goIconTxt, _goTitleTxt, _goSubTxt, _goStatsTxt;
+
     // ── Town view ─────────────────────────────────────────────────────────────
 
     TownPresenter        _townView;
@@ -61,6 +66,9 @@ public class GameController : MonoBehaviour
         _sim = new Simulator(cfg, Seed);
         _pendingOrgDelta = 0;
         _autoTimer = 0f;
+        _autoTick  = false;
+        if (_autoLbl != null) _autoLbl.text = "Auto: OFF";
+        _gameOverPanel?.SetActive(false);
         _townView?.ResetVisuals();
     }
 
@@ -93,15 +101,9 @@ public class GameController : MonoBehaviour
         _orgLvTxt.text   = $"Org Crime  Lv {s.OrganizedCrimeLevel}";
 
         if (s.IsGameOver)
-        {
-            bool win = s.EndReason == EndReason.WealthWin;
-            _statusTxt.text  = win ? "★  WEALTH WIN  ★" : $"✕  {s.EndReason}  ✕";
-            _statusTxt.color = win ? new Color(1f, 0.85f, 0.15f) : new Color(1f, 0.30f, 0.30f);
-        }
+            ShowGameOverPanel(s);
         else
-        {
             _statusTxt.text = string.Empty;
-        }
 
         _townView?.Refresh(s);
         _routeViz?.Refresh(s);
@@ -248,6 +250,110 @@ public class GameController : MonoBehaviour
 
         ry -= 14f;
         _statusTxt = MkTxt(rp, string.Empty, 15, rx, ry, tw, 30f, TextAnchor.MiddleLeft, Color.white);
+
+        BuildGameOverScreen(root);
+    }
+
+    // ── Game-over overlay construction ────────────────────────────────────────
+
+    void BuildGameOverScreen(RectTransform root)
+    {
+        const float CW = 520f, CH = 390f;
+
+        // Full-screen dim
+        var overlayGO = new GameObject("GameOver");
+        overlayGO.transform.SetParent(root, false);
+        _gameOverPanel = overlayGO;
+        var overlay    = overlayGO.AddComponent<RectTransform>();
+        overlay.anchorMin = Vector2.zero;
+        overlay.anchorMax = Vector2.one;
+        overlay.offsetMin = overlay.offsetMax = Vector2.zero;
+        BgImg(overlay, new Color(0.05f, 0.02f, 0.01f, 0.88f));
+
+        // Centred card
+        var cardGO = new GameObject("Card");
+        cardGO.transform.SetParent(overlay, false);
+        var card       = cardGO.AddComponent<RectTransform>();
+        card.anchorMin = card.anchorMax = new Vector2(0.5f, 0.5f);
+        card.pivot     = new Vector2(0.5f, 0.5f);
+        card.sizeDelta = new Vector2(CW, CH);
+        card.anchoredPosition = Vector2.zero;
+        BgImg(card, new Color(0.12f, 0.08f, 0.04f, 0.97f));
+
+        // Icon ★ / ✕
+        _goIconTxt = MkTxt(card, "★", 44, 0f, CH - 72f, CW, 58f,
+            TextAnchor.UpperCenter, new Color(1f, 0.85f, 0.15f));
+
+        // Title
+        _goTitleTxt = MkTxt(card, "WEALTH WIN", 26, 0f, CH - 136f, CW, 46f,
+            TextAnchor.UpperCenter, new Color(1f, 0.85f, 0.15f));
+
+        // Subtitle
+        _goSubTxt = MkTxt(card, "", 13, 20f, CH - 168f, CW - 40f, 24f,
+            TextAnchor.UpperCenter, new Color(0.90f, 0.80f, 0.62f));
+
+        // Divider
+        BgImg(MkRT(card, "Div", 20f, CH - 182f, CW - 40f, 1f),
+            new Color(0.42f, 0.30f, 0.12f));
+
+        // Stats block (6 lines of monospaced-ish text)
+        _goStatsTxt = MkTxt(card, "", 14, 28f, 58f, CW - 56f, 148f,
+            TextAnchor.UpperLeft, new Color(0.88f, 0.80f, 0.62f));
+
+        // Play Again button
+        MkBtn(card, "Play Again", (CW - 220f) * 0.5f, 12f, 220f, 40f,
+            () => { NewGame(); Refresh(); },
+            new Color(0.52f, 0.34f, 0.08f));
+
+        overlayGO.SetActive(false);
+    }
+
+    void ShowGameOverPanel(WorldState s)
+    {
+        _gameOverPanel.SetActive(true);
+        bool win = s.EndReason == EndReason.WealthWin;
+
+        _goIconTxt.text  = win ? "★" : "✕";
+        _goIconTxt.color = win ? new Color(1.00f, 0.85f, 0.15f) : new Color(1.00f, 0.32f, 0.18f);
+
+        _goTitleTxt.text  = EndReasonTitle(s.EndReason);
+        _goTitleTxt.color = _goIconTxt.color;
+
+        _goSubTxt.text = EndReasonFlavour(s.EndReason);
+
+        _goStatsTxt.text =
+            $"Ticks survived    {s.Tick}\n" +
+            $"Final purse       §{s.Purse:N0}\n" +
+            $"Town coffers      §{s.Coffers:N0}\n" +
+            $"Town quality      {Bar(s.TownQuality)}  {s.TownQuality:P0}\n" +
+            $"Safety            {Bar(s.Safety)}  {s.Safety:P0}\n" +
+            $"Reputation        {Bar(s.Reputation)}  {s.Reputation:P0}";
+
+        _statusTxt.text = string.Empty;
+    }
+
+    static string EndReasonTitle(EndReason r)
+    {
+        switch (r)
+        {
+            case EndReason.WealthWin:          return "WEALTH WIN";
+            case EndReason.AuditArrest:        return "ARRESTED";
+            case EndReason.BankruptcyCollapse: return "BANKRUPTCY";
+            case EndReason.RivalOverthrow:     return "OVERTHROWN";
+            default:                           return r.ToString().ToUpper();
+        }
+    }
+
+    static string EndReasonFlavour(EndReason r)
+    {
+        switch (r)
+        {
+            case EndReason.WealthWin:          return "A worthy Prefect of the Empire.";
+            case EndReason.AuditArrest:        return "The Imperial auditors have come for you.";
+            case EndReason.BankruptcyCollapse: return "The treasury is empty. The town falters.";
+            case EndReason.RivalOverthrow:     return "A rival has seized the prefecture.";
+            default:                           return "Your time in office is over.";
+        }
     }
 
     // ── UI helpers ────────────────────────────────────────────────────────────
