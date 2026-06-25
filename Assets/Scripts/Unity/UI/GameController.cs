@@ -30,6 +30,10 @@ public class GameController : MonoBehaviour
     Text   _qualTxt, _safetyTxt, _repTxt, _orgLvTxt, _statusTxt;
     Text   _autoLbl;
 
+    // ── Title screen ──────────────────────────────────────────────────────────
+
+    GameObject _titlePanel;
+
     // ── Game-over overlay ─────────────────────────────────────────────────────
 
     GameObject _gameOverPanel;
@@ -261,6 +265,60 @@ public class GameController : MonoBehaviour
         _statusTxt = MkTxt(rp, string.Empty, 15, rx, ry, tw, 30f, TextAnchor.MiddleLeft, Color.white);
 
         BuildGameOverScreen(root);
+        BuildTitleScreen(root);   // topmost — covers everything until Begin
+    }
+
+    // ── Title screen construction ─────────────────────────────────────────────
+
+    void BuildTitleScreen(RectTransform root)
+    {
+        const float CW = 520f, CH = 370f;
+
+        // Full-screen dark overlay
+        var go = new GameObject("TitleScreen");
+        go.transform.SetParent(root, false);
+        _titlePanel = go;
+        var rt = go.AddComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
+        BgImg(rt, new Color(0.07f, 0.04f, 0.015f, 0.97f));
+
+        // Centre card
+        var cardGO = new GameObject("Card");
+        cardGO.transform.SetParent(rt, false);
+        var card = cardGO.AddComponent<RectTransform>();
+        card.anchorMin = card.anchorMax = new Vector2(0.5f, 0.5f);
+        card.pivot     = new Vector2(0.5f, 0.5f);
+        card.sizeDelta = new Vector2(CW, CH);
+        card.anchoredPosition = Vector2.zero;
+
+        // Title
+        MkTxt(card, "THE PREFECT'S CUT", 40, 0f, CH - 68f, CW, 56f,
+            TextAnchor.UpperCenter, new Color(1.00f, 0.90f, 0.60f));
+
+        // Ornament divider
+        MkTxt(card, "─────  ★  ─────", 13, 0f, CH - 112f, CW, 20f,
+            TextAnchor.UpperCenter, new Color(0.60f, 0.44f, 0.20f));
+
+        // Subtitle
+        MkTxt(card, "A game of wealth, influence,\nand plausible deniability.", 13,
+            40f, CH - 172f, CW - 80f, 52f,
+            TextAnchor.UpperCenter, new Color(0.82f, 0.70f, 0.48f));
+
+        // Hint
+        MkTxt(card, "Enrich yourself before the Emperor notices.", 11,
+            40f, CH - 238f, CW - 80f, 20f,
+            TextAnchor.UpperCenter, new Color(0.52f, 0.38f, 0.22f));
+
+        // Lower rule
+        BgImg(MkRT(card, "Rule", 40f, 96f, CW - 80f, 1f),
+            new Color(0.38f, 0.26f, 0.10f));
+
+        // BEGIN button
+        MkBtn(card, "BEGIN", (CW - 190f) * 0.5f, 32f, 190f, 50f,
+            () => _titlePanel.SetActive(false),
+            new Color(0.62f, 0.40f, 0.10f));
     }
 
     // ── Game-over overlay construction ────────────────────────────────────────
