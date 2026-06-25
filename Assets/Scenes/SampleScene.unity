@@ -621,18 +621,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b40337856fdbf5b49948f495a9fca093, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterIdleAnim
-  bobAmplitude: 0.038
-  bobFreq: 0.85
-  swayDegrees: 2
-  swayFreq: 0.5
+  bobAmplitude: 0.028
+  bobFreq: 0.9
+  swayDegrees: 2.2
+  swayFreq: 0.55
   headName: Head
-  headNodDeg: 4
-  headNodFreq: 0.38
+  headNodDeg: 3.5
+  headNodFreq: 0.35
   armLName: UpperArmL
   armRName: UpperArmR
-  armSwingDeg: 7
-  armSwingFreq: 0.85
-  phase: 0.55
+  armSwingDeg: 5
+  armSwingFreq: 0.9
+  phase: 0
 --- !u!1 &811631989
 GameObject:
   m_ObjectHideFlags: 0
@@ -750,7 +750,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 6375131125856368612, guid: 03b4e67145626714ca13b29483c9d4c6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1552223051}
   m_SourcePrefab: {fileID: -4161369568681901532, guid: 03b4e67145626714ca13b29483c9d4c6, type: 3}
 --- !u!4 &826279086 stripped
 Transform:
@@ -6279,6 +6282,35 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -3105157092420064933, guid: c4164453d5c9df64aa973b4e23ba92ab, type: 3}
   m_PrefabInstance: {fileID: 1522879874}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1552223050 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6375131125856368612, guid: 03b4e67145626714ca13b29483c9d4c6, type: 3}
+  m_PrefabInstance: {fileID: 826279085}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1552223051
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1552223050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b40337856fdbf5b49948f495a9fca093, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterIdleAnim
+  bobAmplitude: 0.022
+  bobFreq: 0.9
+  swayDegrees: 1.8
+  swayFreq: 0.55
+  headName: Head
+  headNodDeg: 1.5
+  headNodFreq: 0.35
+  armLName: ArmL
+  armRName: ArmR
+  armSwingDeg: 4
+  armSwingFreq: 0.9
+  phase: 2.1
 --- !u!1001 &1597292693
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6368,18 +6400,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b40337856fdbf5b49948f495a9fca093, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterIdleAnim
-  bobAmplitude: 0.018
-  bobFreq: 0.75
-  swayDegrees: 1.2
-  swayFreq: 0.35
+  bobAmplitude: 0.012
+  bobFreq: 0.9
+  swayDegrees: 0.8
+  swayFreq: 0.55
   headName: Head
-  headNodDeg: 1.5
-  headNodFreq: 0.25
+  headNodDeg: 1
+  headNodFreq: 0.35
   armLName: UpperArmL
   armRName: UpperArmR
-  armSwingDeg: 3
-  armSwingFreq: 0.75
-  phase: 1.35
+  armSwingDeg: 2
+  armSwingFreq: 0.9
+  phase: 3.14
 --- !u!1001 &1844376799
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6469,18 +6501,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b40337856fdbf5b49948f495a9fca093, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterIdleAnim
-  bobAmplitude: 0.025
-  bobFreq: 0.7
-  swayDegrees: 3.5
-  swayFreq: 0.45
+  bobAmplitude: 0.018
+  bobFreq: 0.9
+  swayDegrees: 1.5
+  swayFreq: 0.55
   headName: Head
-  headNodDeg: 2.5
-  headNodFreq: 0.3
-  armLName: HandL
-  armRName: HandR
-  armSwingDeg: 4
-  armSwingFreq: 0.7
-  phase: 2.1
+  headNodDeg: 2
+  headNodFreq: 0.35
+  armLName: SleeveL
+  armRName: SleeveR
+  armSwingDeg: 3
+  armSwingFreq: 0.9
+  phase: 1.05
 --- !u!1 &1955100867 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1799346937566708418, guid: 937fe774613750641b1cd63cc0635cc0, type: 3}
@@ -6499,17 +6531,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterIdleAnim
   bobAmplitude: 0.032
-  bobFreq: 1.1
-  swayDegrees: 2.5
-  swayFreq: 0.6
+  bobFreq: 0.9
+  swayDegrees: 3
+  swayFreq: 0.55
   headName: Head
-  headNodDeg: 3.5
-  headNodFreq: 0.4
+  headNodDeg: 4
+  headNodFreq: 0.35
   armLName: UpperArmL
   armRName: UpperArmR
   armSwingDeg: 6
-  armSwingFreq: 1.1
-  phase: 0
+  armSwingFreq: 0.9
+  phase: 4.2
 --- !u!1 &1976335375
 GameObject:
   m_ObjectHideFlags: 0
