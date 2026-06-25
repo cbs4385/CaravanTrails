@@ -32,7 +32,8 @@ public class GameController : MonoBehaviour
 
     // ── Town view ─────────────────────────────────────────────────────────────
 
-    TownPresenter _townView;
+    TownPresenter        _townView;
+    TradeRouteVisualizer _routeViz;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -40,7 +41,8 @@ public class GameController : MonoBehaviour
 
     void Start()
     {
-        _townView = FindObjectOfType<TownPresenter>();
+        _townView  = FindObjectOfType<TownPresenter>();
+        _routeViz  = FindObjectOfType<TradeRouteVisualizer>();
         _townView?.ResetVisuals();
     }
 
@@ -102,6 +104,7 @@ public class GameController : MonoBehaviour
         }
 
         _townView?.Refresh(s);
+        _routeViz?.Refresh(s);
     }
 
     void ToggleAuto()
