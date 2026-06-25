@@ -28,9 +28,19 @@ public class GameController : MonoBehaviour
     Text   _qualTxt, _safetyTxt, _repTxt, _orgLvTxt, _statusTxt;
     Text   _autoLbl;
 
+    // ── Town view ─────────────────────────────────────────────────────────────
+
+    TownPresenter _townView;
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     void Awake()  { NewGame(); BuildUI(); Refresh(); }
+
+    void Start()
+    {
+        _townView = FindObjectOfType<TownPresenter>();
+        _townView?.ResetVisuals();
+    }
 
     void Update()
     {
@@ -47,6 +57,7 @@ public class GameController : MonoBehaviour
         _sim = new Simulator(cfg, Seed);
         _pendingOrgDelta = 0;
         _autoTimer = 0f;
+        _townView?.ResetVisuals();
     }
 
     void DoTick()
@@ -87,6 +98,8 @@ public class GameController : MonoBehaviour
         {
             _statusTxt.text = string.Empty;
         }
+
+        _townView?.Refresh(s);
     }
 
     void ToggleAuto()
@@ -132,52 +145,55 @@ public class GameController : MonoBehaviour
         cs.referenceResolution = new Vector2(1280, 720);
         cGO.AddComponent<GraphicRaycaster>();
         var root = (RectTransform)cGO.transform;
-        BgImg(root, new Color(0.07f, 0.07f, 0.09f));
+        // No full-screen background — centre of screen is transparent, shows the 3D town.
 
-        // Title strip
-        MkTxt(root, "The Prefect's Cut", 22, 0, 685, 1280, 35, TextAnchor.MiddleCenter, Color.white);
-        BgImg(MkRT(root, "Div", 0, 682, 1280, 2), new Color(0.35f, 0.35f, 0.40f));
+        // Title strip (left panel width only)
+        var titleBg = MkRT(root, "TitleBg", 0, 685, 300, 35);
+        BgImg(titleBg, new Color(0.07f, 0.07f, 0.09f, 0.88f));
+        MkTxt(titleBg, "The Prefect's Cut", 16, 0, 0, 300, 35, TextAnchor.MiddleCenter, Color.white);
 
-        // Two panels
-        var lp = MkRT(root, "Controls", 10,  10, 570, 662);  BgImg(lp, new Color(0.10f, 0.10f, 0.12f));
-        var rp = MkRT(root, "State",   600,  10, 670, 662);  BgImg(rp, new Color(0.10f, 0.10f, 0.12f));
+        // Left panel: controls (narrow, anchored to left edge)
+        const float PW = 295f;  // panel width
+        var lp = MkRT(root, "Controls",    0,  0, PW, 685); BgImg(lp, new Color(0.07f, 0.07f, 0.09f, 0.88f));
+        // Right panel: state readouts (narrow, anchored to right edge)
+        var rp = MkRT(root, "State", 1280 - PW, 0, PW, 685); BgImg(rp, new Color(0.07f, 0.07f, 0.09f, 0.88f));
 
         // ── Left panel: controls ───────────────────────────────────────────
 
-        const float xp = 12f, cw = 546f;
-        float y = 630f;
+        const float xp = 10f, cw = PW - 20f;
+        float y = 650f;
 
-        MkTxt(lp, "─ CONTROLS ─", 13, xp, y, cw, 20f, TextAnchor.MiddleLeft, new Color(0.55f, 0.75f, 0.55f));
-        y -= 28f;
+        MkTxt(lp, "─ CONTROLS ─", 12, xp, y, cw, 18f, TextAnchor.MiddleLeft, new Color(0.55f, 0.75f, 0.55f));
+        y -= 24f;
 
-        SliderRow(lp, "Tax Rate",     ref y, xp, cw, 0f, 0.60f, 0.15f, v => _taxVal.text   = $"{v:P0}",   out _taxSl,   out _taxVal);
-        SliderRow(lp, "Skim",         ref y, xp, cw, 0f, 1.00f, 0.10f, v => _skimVal.text  = $"{v:P0}",   out _skimSl,  out _skimVal);
-        SliderRow(lp, "Bribe / tick", ref y, xp, cw, 0f, 20f,   0.00f, v => _bribeVal.text = $"§{v:F0}",  out _bribeSl, out _bribeVal);
-        SliderRow(lp, "Street crime", ref y, xp, cw, 0f, 1.00f, 0.00f, v => _unorgVal.text = $"{v:P0}",   out _unorgSl, out _unorgVal);
+        SliderRow(lp, "Tax Rate",     ref y, xp, cw, 0f, 0.60f, 0.15f, v => _taxVal.text   = $"{v:P0}",  out _taxSl,   out _taxVal);
+        SliderRow(lp, "Skim",         ref y, xp, cw, 0f, 1.00f, 0.10f, v => _skimVal.text  = $"{v:P0}",  out _skimSl,  out _skimVal);
+        SliderRow(lp, "Bribe / tick", ref y, xp, cw, 0f, 20f,   0.00f, v => _bribeVal.text = $"§{v:F0}", out _bribeSl, out _bribeVal);
+        SliderRow(lp, "Street crime", ref y, xp, cw, 0f, 1.00f, 0.00f, v => _unorgVal.text = $"{v:P0}",  out _unorgSl, out _unorgVal);
+
+        y -= 6f;
+        MkTxt(lp, "Org Crime", 12, xp, y, 85f, 26f, TextAnchor.MiddleLeft, Color.white);
+        MkBtn(lp, "−", xp + 90f, y, 30f, 26f, () => _pendingOrgDelta--);
+        MkBtn(lp, "+", xp + 125f, y, 30f, 26f, () => _pendingOrgDelta++);
+        y -= 34f;
 
         y -= 8f;
-        MkTxt(lp, "Org Crime", 13, xp, y, 95f, 28f, TextAnchor.MiddleLeft, Color.white);
-        MkBtn(lp, "−", xp + 100f, y, 32f, 28f, () => _pendingOrgDelta--);
-        MkBtn(lp, "+", xp + 138f, y, 32f, 28f, () => _pendingOrgDelta++);
-        y -= 38f;
+        MkBtn(lp, "▶  NEXT TICK", xp, y, cw, 38f, DoTick, new Color(0.18f, 0.42f, 0.18f));
+        y -= 46f;
 
-        y -= 10f;
-        MkBtn(lp, "▶  NEXT TICK", xp, y, cw, 42f, DoTick, new Color(0.18f, 0.42f, 0.18f));
-        y -= 52f;
-
-        var autoBtn = MkBtn(lp, "Auto: OFF", xp, y, 175f, 28f, ToggleAuto, new Color(0.18f, 0.18f, 0.28f));
+        var autoBtn = MkBtn(lp, "Auto: OFF", xp, y, 130f, 26f, ToggleAuto, new Color(0.18f, 0.18f, 0.28f));
         _autoLbl = autoBtn.GetComponentInChildren<Text>();
-        MkBtn(lp, "New Game", xp + 185f, y, 150f, 28f, () => { NewGame(); Refresh(); });
+        MkBtn(lp, "New Game", xp + 140f, y, 130f, 26f, () => { NewGame(); Refresh(); });
 
         // ── Right panel: state readouts ────────────────────────────────────
 
-        const float rx = 14f, tw = 642f;
-        float ry = 630f;
+        const float rx = 10f, tw = PW - 20f;
+        float ry = 650f;
 
-        MkTxt(rp, "─ STATE ─", 13, rx, ry, tw, 20f, TextAnchor.MiddleLeft, new Color(0.55f, 0.75f, 0.55f));
-        ry -= 28f;
+        MkTxt(rp, "─ STATE ─", 12, rx, ry, tw, 18f, TextAnchor.MiddleLeft, new Color(0.55f, 0.75f, 0.55f));
+        ry -= 24f;
 
-        _tickTxt    = MkTxt(rp, "Tick 0", 17, rx, ry, tw, 24f, TextAnchor.MiddleLeft, new Color(0.70f, 0.78f, 1.00f));
+        _tickTxt    = MkTxt(rp, "Tick 0", 15, rx, ry, tw, 22f, TextAnchor.MiddleLeft, new Color(0.70f, 0.78f, 1.00f));
         ry -= 32f;
 
         _purseTxt   = StatLine(rp, rx, tw, ref ry);
@@ -199,7 +215,7 @@ public class GameController : MonoBehaviour
         _orgLvTxt  = StatLine(rp, rx, tw, ref ry);
 
         ry -= 14f;
-        _statusTxt = MkTxt(rp, string.Empty, 20, rx, ry, tw, 36f, TextAnchor.MiddleLeft, Color.white);
+        _statusTxt = MkTxt(rp, string.Empty, 15, rx, ry, tw, 30f, TextAnchor.MiddleLeft, Color.white);
     }
 
     // ── UI helpers ────────────────────────────────────────────────────────────
