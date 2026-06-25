@@ -39,9 +39,9 @@ namespace GameCore.Sim
         public float OrganizedCrimeSetupCostPerLevel = 40f;
         public float OrganizedCrimeUpkeepPerLevel = 10f;
         public float OrganizedCrimeYieldPerLevel = 30f;
-        public float OrganizedCrimeHeatPerLevel = 0.5f;     // per tick, per level
+        public float OrganizedCrimeHeatPerLevel = 0.54f;    // per tick, per level
         public float OrganizedCrimeRivalPressurePerLevel = 0.08f;
-        public float OrganizedCrimeBetrayalOddsPerLevel = 0.002f;  // per tick per level
+        public float OrganizedCrimeBetrayalOddsPerLevel = 0.003f;  // per tick per level
         public float SafetyPenaltyPerOrganizedLevel = 0.03f;
         public float SafetyFullFundingThreshold = 20f;
         public float SafetyGainRatePerTick = 0.03f;
@@ -51,7 +51,7 @@ namespace GameCore.Sim
         public float HeatNaturalDecayPerTick = 0.03f;
         public float HeatDecayPerBribeUnit = 0.06f;
         public float AuditThreshold = 75f;                          // hidden from player
-        public float AuditChancePerHeatPointAboveThreshold = 0.005f;
+        public float AuditChancePerHeatPointAboveThreshold = 0.004f;
         public float AuditFineMultiplier = 2f;                      // fine = purse * multiplier
 
         // §4.6 Upgrades
@@ -73,7 +73,7 @@ namespace GameCore.Sim
         public bool EnableAuditFail = true;
         public bool EnableBankruptcyFail = true;
         public bool EnableWealthWin = true;
-        public float WealthWinThreshold = 2000f;
+        public float WealthWinThreshold = 1900f;
         public float TownCollapseQualityThreshold = 0.05f;
     }
 }
