@@ -119,6 +119,11 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &13782388 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6254108245348080307, guid: 0aebe3cbef63e8e46bda7e80a41c7913, type: 3}
+  m_PrefabInstance: {fileID: 1597292693}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &65300966
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -385,7 +390,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1799346937566708418, guid: 937fe774613750641b1cd63cc0635cc0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1955100868}
   m_SourcePrefab: {fileID: -4161369568681901532, guid: 937fe774613750641b1cd63cc0635cc0, type: 3}
 --- !u!4 &409128903 stripped
 Transform:
@@ -586,13 +594,45 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 6731355954504649106, guid: 3abf509e7743db744b0b9bb6655f06d7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 807004557}
   m_SourcePrefab: {fileID: -4161369568681901532, guid: 3abf509e7743db744b0b9bb6655f06d7, type: 3}
 --- !u!4 &588645534 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4289479994101098652, guid: 3abf509e7743db744b0b9bb6655f06d7, type: 3}
   m_PrefabInstance: {fileID: 588645533}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &807004556 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6731355954504649106, guid: 3abf509e7743db744b0b9bb6655f06d7, type: 3}
+  m_PrefabInstance: {fileID: 588645533}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &807004557
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 807004556}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b40337856fdbf5b49948f495a9fca093, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterIdleAnim
+  bobAmplitude: 0.038
+  bobFreq: 0.85
+  swayDegrees: 2
+  swayFreq: 0.5
+  headName: Head
+  headNodDeg: 4
+  headNodFreq: 0.38
+  armLName: UpperArmL
+  armRName: UpperArmR
+  armSwingDeg: 7
+  armSwingFreq: 0.85
+  phase: 0.55
 --- !u!1 &811631989
 GameObject:
   m_ObjectHideFlags: 0
@@ -947,6 +987,11 @@ Transform:
   - {fileID: 409128903}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1343679413 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 658944623095596391, guid: e038c942da3b23d4d902889c58afd007, type: 3}
+  m_PrefabInstance: {fileID: 1844376799}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1393823298
 GameObject:
   m_ObjectHideFlags: 0
@@ -1433,13 +1478,40 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 6254108245348080307, guid: 0aebe3cbef63e8e46bda7e80a41c7913, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1597292695}
   m_SourcePrefab: {fileID: -4161369568681901532, guid: 0aebe3cbef63e8e46bda7e80a41c7913, type: 3}
 --- !u!4 &1597292694 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2849900416550430858, guid: 0aebe3cbef63e8e46bda7e80a41c7913, type: 3}
   m_PrefabInstance: {fileID: 1597292693}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1597292695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 13782388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b40337856fdbf5b49948f495a9fca093, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterIdleAnim
+  bobAmplitude: 0.018
+  bobFreq: 0.75
+  swayDegrees: 1.2
+  swayFreq: 0.35
+  headName: Head
+  headNodDeg: 1.5
+  headNodFreq: 0.25
+  armLName: UpperArmL
+  armRName: UpperArmR
+  armSwingDeg: 3
+  armSwingFreq: 0.75
+  phase: 1.35
 --- !u!1001 &1844376799
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1507,13 +1579,69 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 658944623095596391, guid: e038c942da3b23d4d902889c58afd007, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1844376801}
   m_SourcePrefab: {fileID: -4161369568681901532, guid: e038c942da3b23d4d902889c58afd007, type: 3}
 --- !u!4 &1844376800 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8181491774557107859, guid: e038c942da3b23d4d902889c58afd007, type: 3}
   m_PrefabInstance: {fileID: 1844376799}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1844376801
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1343679413}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b40337856fdbf5b49948f495a9fca093, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterIdleAnim
+  bobAmplitude: 0.025
+  bobFreq: 0.7
+  swayDegrees: 3.5
+  swayFreq: 0.45
+  headName: Head
+  headNodDeg: 2.5
+  headNodFreq: 0.3
+  armLName: HandL
+  armRName: HandR
+  armSwingDeg: 4
+  armSwingFreq: 0.7
+  phase: 2.1
+--- !u!1 &1955100867 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1799346937566708418, guid: 937fe774613750641b1cd63cc0635cc0, type: 3}
+  m_PrefabInstance: {fileID: 409128902}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1955100868
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1955100867}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b40337856fdbf5b49948f495a9fca093, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterIdleAnim
+  bobAmplitude: 0.032
+  bobFreq: 1.1
+  swayDegrees: 2.5
+  swayFreq: 0.6
+  headName: Head
+  headNodDeg: 3.5
+  headNodFreq: 0.4
+  armLName: UpperArmL
+  armRName: UpperArmR
+  armSwingDeg: 6
+  armSwingFreq: 1.1
+  phase: 0
 --- !u!1 &1976335375
 GameObject:
   m_ObjectHideFlags: 0
