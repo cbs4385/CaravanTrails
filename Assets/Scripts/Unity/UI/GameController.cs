@@ -145,27 +145,52 @@ public class GameController : MonoBehaviour
         var cv  = cGO.AddComponent<Canvas>();
         cv.renderMode = RenderMode.ScreenSpaceOverlay;
         var cs = cGO.AddComponent<CanvasScaler>();
-        cs.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        cs.uiScaleMode        = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         cs.referenceResolution = new Vector2(1280, 720);
+        cs.matchWidthOrHeight  = 0.5f;
         cGO.AddComponent<GraphicRaycaster>();
         var root = (RectTransform)cGO.transform;
-        // No full-screen background — centre of screen is transparent, shows the 3D town.
 
-        // Title strip (left panel width only)
-        var titleBg = MkRT(root, "TitleBg", 0, 685, 300, 35);
-        BgImg(titleBg, new Color(0.14f, 0.09f, 0.05f, 0.95f));
-        MkTxt(titleBg, "The Prefect's Cut", 16, 0, 0, 300, 35, TextAnchor.MiddleCenter, new Color(0.96f, 0.88f, 0.68f));
-
-        // Left panel: controls (narrow, anchored to left edge)
         const float PW = 295f;  // panel width
-        var lp = MkRT(root, "Controls",    0,  0, PW, 685); BgImg(lp, new Color(0.14f, 0.09f, 0.05f, 0.93f));
-        // Right panel: state readouts (narrow, anchored to right edge)
-        var rp = MkRT(root, "State", 1280 - PW, 0, PW, 685); BgImg(rp, new Color(0.14f, 0.09f, 0.05f, 0.93f));
+
+        // Left panel: anchored to left screen edge, full height
+        var lpGO = new GameObject("Controls");
+        lpGO.transform.SetParent(root, false);
+        var lp       = lpGO.AddComponent<RectTransform>();
+        lp.anchorMin = Vector2.zero;
+        lp.anchorMax = new Vector2(0f, 1f);
+        lp.pivot     = Vector2.zero;
+        lp.offsetMin = Vector2.zero;
+        lp.offsetMax = new Vector2(PW, 0f);
+        BgImg(lp, new Color(0.14f, 0.09f, 0.05f, 0.93f));
+
+        // Title strip pinned to top of left panel
+        var titleGO = new GameObject("TitleBg");
+        titleGO.transform.SetParent(lp, false);
+        var titleRT       = titleGO.AddComponent<RectTransform>();
+        titleRT.anchorMin = new Vector2(0f, 1f);
+        titleRT.anchorMax = Vector2.one;
+        titleRT.pivot     = new Vector2(0f, 1f);
+        titleRT.offsetMin = new Vector2(0f, -35f);
+        titleRT.offsetMax = Vector2.zero;
+        BgImg(titleRT, new Color(0.10f, 0.06f, 0.03f, 0.97f));
+        MkTxt(titleRT, "The Prefect's Cut", 16, 0, 0, PW, 35, TextAnchor.MiddleCenter, new Color(0.96f, 0.88f, 0.68f));
+
+        // Right panel: anchored to right screen edge, full height
+        var rpGO = new GameObject("State");
+        rpGO.transform.SetParent(root, false);
+        var rp       = rpGO.AddComponent<RectTransform>();
+        rp.anchorMin = new Vector2(1f, 0f);
+        rp.anchorMax = Vector2.one;
+        rp.pivot     = new Vector2(1f, 0f);
+        rp.offsetMin = new Vector2(-PW, 0f);
+        rp.offsetMax = Vector2.zero;
+        BgImg(rp, new Color(0.14f, 0.09f, 0.05f, 0.93f));
 
         // ── Left panel: controls ───────────────────────────────────────────
 
         const float xp = 10f, cw = PW - 20f;
-        float y = 650f;
+        float y = 670f;
 
         MkTxt(lp, "─ CONTROLS ─", 12, xp, y, cw, 18f, TextAnchor.MiddleLeft, new Color(0.96f, 0.78f, 0.42f));
         y -= 24f;
@@ -192,7 +217,7 @@ public class GameController : MonoBehaviour
         // ── Right panel: state readouts ────────────────────────────────────
 
         const float rx = 10f, tw = PW - 20f;
-        float ry = 650f;
+        float ry = 680f;
 
         MkTxt(rp, "─ STATE ─", 12, rx, ry, tw, 18f, TextAnchor.MiddleLeft, new Color(0.96f, 0.78f, 0.42f));
         ry -= 24f;
