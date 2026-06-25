@@ -52,11 +52,18 @@ public class TownPresenter : MonoBehaviour
                 Mathf.Clamp01(orgLevel / 3f)));
     }
 
+    static readonly int BaseColorID = Shader.PropertyToID("_BaseColor");
+    static readonly int ColorID     = Shader.PropertyToID("_Color");
+
     static void SetColor(GameObject go, Color c)
     {
         if (go == null) return;
         foreach (var r in go.GetComponentsInChildren<Renderer>())
-            r.material.color = c;
+        {
+            var m = r.material;
+            if (m.HasProperty(BaseColorID))      m.SetColor(BaseColorID, c);
+            else if (m.HasProperty(ColorID))     m.SetColor(ColorID, c);
+        }
     }
 
     GameObject Child(string n) => transform.Find(n)?.gameObject;
