@@ -1,4 +1,5 @@
 using System;
+using GameCore.Events;
 using GameCore.Sim;
 using UnityEngine;
 using UnityEngine.UI;
@@ -14,10 +15,11 @@ public class GameController : MonoBehaviour
 
     // ── Sim ──────────────────────────────────────────────────────────────────
 
-    Simulator _sim;
-    int       _pendingOrgDelta;
-    bool      _autoTick;
-    float     _autoTimer;
+    Simulator   _sim;
+    int         _pendingOrgDelta;
+    EventOption _pendingEventChoice;
+    bool        _autoTick;
+    float       _autoTimer;
     const float AutoInterval = 0.75f;
 
     // ── UI refs ───────────────────────────────────────────────────────────────
@@ -33,6 +35,11 @@ public class GameController : MonoBehaviour
     // ── Title screen ──────────────────────────────────────────────────────────
 
     GameObject _titlePanel;
+
+    // ── Event modal ───────────────────────────────────────────────────────────
+
+    GameObject _eventPanel;
+    Text       _evHeadTxt, _evBodyTxt, _evOptALbl, _evOptBLbl;
 
     // ── Game-over overlay ─────────────────────────────────────────────────────
 
@@ -76,17 +83,20 @@ public class GameController : MonoBehaviour
         var cfg = ConfigAsset != null ? ConfigAsset.Config : new SimConfig();
         _sim = new Simulator(cfg, Seed);
         _pendingOrgDelta       = 0;
+        _pendingEventChoice    = EventOption.None;
         _autoTimer             = 0f;
         _autoTick              = false;
         _gameOverSoundPlayed   = false;
         if (_autoLbl != null) _autoLbl.text = "Auto: OFF";
         _gameOverPanel?.SetActive(false);
+        _eventPanel?.SetActive(false);
         _townView?.ResetVisuals();
     }
 
     void DoTick()
     {
         if (_sim.State.IsGameOver) return;
+        if (_eventPanel != null && _eventPanel.activeSelf) return; // await player response
         _sim.Tick(new PlayerInput
         {
             TaxRate                   = _taxSl.value,
@@ -94,12 +104,16 @@ public class GameController : MonoBehaviour
             BribeAmount               = _bribeSl.value,
             UnorganizedCrimeIntensity = _unorgSl.value,
             OrganizedCrimeLevelDelta  = _pendingOrgDelta,
+            EventChoice               = _pendingEventChoice,
         });
-        _pendingOrgDelta = 0;
+        _pendingOrgDelta    = 0;
+        _pendingEventChoice = EventOption.None;
         _sfx?.PlayTick();
         var tele = _sim.Telemetry;
         if (_caravanMgr != null && tele.Count > 0)
             _caravanMgr.OnTick(tele[tele.Count - 1].TrafficVolume);
+        if (_sim.State.PendingEvent != null)
+            ShowEventPanel(_sim.State.PendingEvent);
         Refresh();
     }
 
@@ -269,8 +283,75 @@ public class GameController : MonoBehaviour
         ry -= 14f;
         _statusTxt = MkTxt(rp, string.Empty, 15, rx, ry, tw, 30f, TextAnchor.MiddleLeft, Color.white);
 
+        BuildEventPanel(root);
         BuildGameOverScreen(root);
         BuildTitleScreen(root);   // topmost — covers everything until Begin
+    }
+
+    // ── Event modal construction ──────────────────────────────────────────────
+
+    void BuildEventPanel(RectTransform root)
+    {
+        const float CW = 540f, CH = 290f;
+
+        var go = new GameObject("EventPanel");
+        go.transform.SetParent(root, false);
+        _eventPanel = go;
+        var rt = go.AddComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
+        BgImg(rt, new Color(0.05f, 0.02f, 0.01f, 0.82f));
+
+        var cardGO = new GameObject("Card");
+        cardGO.transform.SetParent(rt, false);
+        var card = cardGO.AddComponent<RectTransform>();
+        card.anchorMin = card.anchorMax = new Vector2(0.5f, 0.5f);
+        card.pivot     = new Vector2(0.5f, 0.5f);
+        card.sizeDelta = new Vector2(CW, CH);
+        card.anchoredPosition = Vector2.zero;
+        BgImg(card, new Color(0.13f, 0.08f, 0.04f, 0.97f));
+
+        // Headline
+        _evHeadTxt = MkTxt(card, "Event", 21, 16f, CH - 52f, CW - 32f, 36f,
+            TextAnchor.UpperCenter, new Color(1.00f, 0.88f, 0.55f));
+
+        // Divider
+        BgImg(MkRT(card, "Div", 20f, CH - 64f, CW - 40f, 1f),
+            new Color(0.42f, 0.30f, 0.12f));
+
+        // Body text (word-wrapped)
+        _evBodyTxt = MkTxt(card, "", 13, 20f, CH - 148f, CW - 40f, 78f,
+            TextAnchor.UpperLeft, new Color(0.82f, 0.72f, 0.52f));
+        _evBodyTxt.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+        // Option buttons — side by side
+        float bw = (CW - 56f) / 2f;
+        var btnA = MkBtn(card, "Option A", 18f, 18f, bw, 46f,
+            () => { _pendingEventChoice = EventOption.OptionA; _eventPanel.SetActive(false); },
+            new Color(0.22f, 0.44f, 0.18f));
+        _evOptALbl = btnA.GetComponentInChildren<Text>();
+        _evOptALbl.fontSize = 12;
+
+        var btnB = MkBtn(card, "Option B", 20f + bw + 18f, 18f, bw, 46f,
+            () => { _pendingEventChoice = EventOption.OptionB; _eventPanel.SetActive(false); },
+            new Color(0.48f, 0.20f, 0.08f));
+        _evOptBLbl = btnB.GetComponentInChildren<Text>();
+        _evOptBLbl.fontSize = 12;
+
+        go.SetActive(false);
+    }
+
+    void ShowEventPanel(PendingEvent evt)
+    {
+        _evHeadTxt.text = evt.Headline;
+        _evBodyTxt.text = evt.BodyText;
+        _evOptALbl.text = evt.OptionALabel;
+        _evOptBLbl.text = evt.OptionBLabel;
+        _eventPanel.SetActive(true);
+        // Pause auto-tick so player must respond before sim advances
+        _autoTick = false;
+        if (_autoLbl != null) _autoLbl.text = "Auto: OFF";
     }
 
     // ── Title screen construction ─────────────────────────────────────────────

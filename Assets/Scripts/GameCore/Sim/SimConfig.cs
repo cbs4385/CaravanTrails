@@ -75,5 +75,26 @@ namespace GameCore.Sim
         public bool EnableWealthWin = true;
         public float WealthWinThreshold = 1900f;
         public float TownCollapseQualityThreshold = 0.05f;
+
+        // §3 Events — all toggleable; probabilities fire at most once per tick
+        public bool  EnableEvents = true;
+        public float AuditWarningHeatThreshold             = 55f;
+        public float AuditWarningChance                    = 0.15f;
+        public float AuditWarningBribeCost                 = 30f;
+        public float AuditWarningBribeHeatReduction        = 20f;
+        public float AuditWarningIgnoreHeatPenalty         = 12f;
+        public float RivalIncursionChance                  = 0.10f;
+        public float RivalIncursionTributeCost             = 50f;
+        public float RivalIncursionRefuseSafetyPenalty     = 0.08f;
+        public float MerchantComplaintRepThreshold         = 0.45f;
+        public float MerchantComplaintChance               = 0.12f;
+        public float MerchantComplaintCompensationCost     = 40f;
+        public float MerchantComplaintCompensationRepBonus = 0.12f;
+        public float MerchantComplaintDismissRepPenalty    = 0.10f;
+        public float InspectorVisitChance                  = 0.05f;
+        public int   InspectorVisitStartTick               = 5;
+        public float InspectorGiftCost                     = 60f;
+        public float InspectorGiftHeatReduction            = 30f;
+        public float InspectorStonewallHeatPenalty         = 20f;
     }
 }

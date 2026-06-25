@@ -1,0 +1,135 @@
+using System;
+using GameCore.Sim;
+
+namespace GameCore.Events
+{
+    public class DefaultEventModel : IEventModel
+    {
+        public PendingEvent TryFireEvent(WorldState state, SimConfig config, Random rng)
+        {
+            if (!config.EnableEvents) return null;
+            if (state.PendingEvent != null) return null;
+
+            // Priority: Inspector > AuditWarning > RivalIncursion > MerchantComplaint.
+            // Each check is independent — only one event fires per tick.
+
+            if (state.Tick >= config.InspectorVisitStartTick
+                && rng.NextDouble() < config.InspectorVisitChance)
+                return MakeInspectorVisit(config);
+
+            if (state.Heat > config.AuditWarningHeatThreshold
+                && rng.NextDouble() < config.AuditWarningChance)
+                return MakeAuditWarning(config);
+
+            if (state.OrganizedCrimeLevel >= 1
+                && rng.NextDouble() < config.RivalIncursionChance)
+                return MakeRivalIncursion(config);
+
+            if (state.Reputation < config.MerchantComplaintRepThreshold
+                && rng.NextDouble() < config.MerchantComplaintChance)
+                return MakeMerchantComplaint(config);
+
+            return null;
+        }
+
+        public void ResolveEvent(WorldState state, EventOption choice, SimConfig config)
+        {
+            if (state.PendingEvent == null) return;
+
+            if (choice != EventOption.None)
+            {
+                switch (state.PendingEvent.Type)
+                {
+                    case EventType.AuditWarning:
+                        if (choice == EventOption.OptionA)
+                        {
+                            state.Purse = Math.Max(0f, state.Purse - config.AuditWarningBribeCost);
+                            state.Heat  = Math.Max(0f, state.Heat  - config.AuditWarningBribeHeatReduction);
+                        }
+                        else
+                        {
+                            state.Heat += config.AuditWarningIgnoreHeatPenalty;
+                        }
+                        break;
+
+                    case EventType.RivalIncursion:
+                        if (choice == EventOption.OptionA)
+                            state.Purse = Math.Max(0f, state.Purse - config.RivalIncursionTributeCost);
+                        else
+                            state.Safety = Math.Max(0f, state.Safety - config.RivalIncursionRefuseSafetyPenalty);
+                        break;
+
+                    case EventType.MerchantComplaint:
+                        if (choice == EventOption.OptionA)
+                        {
+                            state.Purse      = Math.Max(0f, state.Purse      - config.MerchantComplaintCompensationCost);
+                            state.Reputation = Math.Min(1f, state.Reputation + config.MerchantComplaintCompensationRepBonus);
+                        }
+                        else
+                        {
+                            state.Reputation = Math.Max(0f, state.Reputation - config.MerchantComplaintDismissRepPenalty);
+                        }
+                        break;
+
+                    case EventType.InspectorVisit:
+                        if (choice == EventOption.OptionA)
+                        {
+                            state.Purse = Math.Max(0f, state.Purse - config.InspectorGiftCost);
+                            state.Heat  = Math.Max(0f, state.Heat  - config.InspectorGiftHeatReduction);
+                        }
+                        else
+                        {
+                            state.Heat += config.InspectorStonewallHeatPenalty;
+                        }
+                        break;
+                }
+            }
+
+            state.PendingEvent = null;
+        }
+
+        static PendingEvent MakeAuditWarning(SimConfig c) => new PendingEvent
+        {
+            Type         = EventType.AuditWarning,
+            Headline     = "Imperial Auditors Spotted",
+            BodyText     = "A tax assessor from the capital has arrived asking pointed questions about provincial revenue.",
+            OptionALabel = $"Spread coin  (-§{c.AuditWarningBribeCost:0} purse, -{c.AuditWarningBribeHeatReduction:0} heat)",
+            OptionBLabel = $"Stonewall them  (+{c.AuditWarningIgnoreHeatPenalty:0} heat)",
+            OptionACost  = c.AuditWarningBribeCost,
+            OptionBEffect= c.AuditWarningIgnoreHeatPenalty,
+        };
+
+        static PendingEvent MakeRivalIncursion(SimConfig c) => new PendingEvent
+        {
+            Type         = EventType.RivalIncursion,
+            Headline     = "Rival Gang Demands Tribute",
+            BodyText     = "A rival organization has sent word: pay tribute or they will undermine your network.",
+            OptionALabel = $"Pay tribute  (-§{c.RivalIncursionTributeCost:0} purse)",
+            OptionBLabel = $"Refuse  (-{c.RivalIncursionRefuseSafetyPenalty:P0} safety)",
+            OptionACost  = c.RivalIncursionTributeCost,
+            OptionBEffect= c.RivalIncursionRefuseSafetyPenalty,
+        };
+
+        static PendingEvent MakeMerchantComplaint(SimConfig c) => new PendingEvent
+        {
+            Type         = EventType.MerchantComplaint,
+            Headline     = "Merchant Guild Complains",
+            BodyText     = "The guild master has filed a formal protest: traders are avoiding the route due to extortion.",
+            OptionALabel = $"Compensate guild  (-§{c.MerchantComplaintCompensationCost:0} purse)",
+            OptionBLabel = $"Dismiss complaint  (-{c.MerchantComplaintDismissRepPenalty:P0} rep)",
+            OptionACost  = c.MerchantComplaintCompensationCost,
+            OptionBEffect= c.MerchantComplaintDismissRepPenalty,
+        };
+
+        static PendingEvent MakeInspectorVisit(SimConfig c) => new PendingEvent
+        {
+            Type         = EventType.InspectorVisit,
+            Headline     = "Visiting Imperial Inspector",
+            BodyText     = "An inspector from the capital tours the province. His report could make or break your position.",
+            OptionALabel = $"Gift the inspector  (-§{c.InspectorGiftCost:0} purse, -{c.InspectorGiftHeatReduction:0} heat)",
+            OptionBLabel = $"Stonewall  (+{c.InspectorStonewallHeatPenalty:0} heat)",
+            OptionACost  = c.InspectorGiftCost,
+            OptionBEffect= c.InspectorStonewallHeatPenalty,
+        };
+    }
+}

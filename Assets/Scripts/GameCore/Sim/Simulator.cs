@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using GameCore.Crime;
 using GameCore.Economy;
 using GameCore.EndConditions;
+using GameCore.Events;
 using GameCore.Heat;
 using GameCore.Sources;
 
@@ -19,6 +20,7 @@ namespace GameCore.Sim
         private readonly IHeatModel _heatModel;
         private readonly ICrimeModel _crimeModel;
         private readonly IEndConditionEvaluator _endCondition;
+        private readonly IEventModel _eventModel;
 
         private readonly List<TelemetryRecord> _telemetry = new List<TelemetryRecord>();
         public IReadOnlyList<TelemetryRecord> Telemetry => _telemetry;
@@ -30,6 +32,7 @@ namespace GameCore.Sim
             IHeatModel heatModel = null,
             ICrimeModel crimeModel = null,
             IEndConditionEvaluator endCondition = null,
+            IEventModel eventModel = null,
             WorldState initialState = null)
         {
             Config = config;
@@ -38,6 +41,7 @@ namespace GameCore.Sim
             _heatModel = heatModel ?? new DefaultHeatModel();
             _crimeModel = crimeModel ?? new DefaultCrimeModel();
             _endCondition = endCondition ?? new DefaultEndConditionEvaluator();
+            _eventModel = eventModel ?? new DefaultEventModel();
             State = (initialState ?? WorldState.Default()).Clone();
         }
 
@@ -48,6 +52,9 @@ namespace GameCore.Sim
 
             var s = State.Clone();
             var ctx = new TickContext();
+
+            // 0. Resolve pending event from previous tick (None choice = auto-dismiss)
+            _eventModel.ResolveEvent(s, input.EventChoice, Config);
 
             // 1. Route attractiveness & traffic
             ctx.RouteAttractiveness = TrafficModel.ComputeAttractiveness(s, input.TaxRate, Config);
@@ -171,6 +178,14 @@ namespace GameCore.Sim
                 }
             }
 
+            // 13. Fire new event — only when game is still live (§3)
+            if (!s.IsGameOver)
+            {
+                var newEvent = _eventModel.TryFireEvent(s, Config, _rng);
+                s.PendingEvent = newEvent;
+                ctx.EventFired = newEvent?.Type ?? EventType.None;
+            }
+
             s.Tick++;
             State = s;
 
@@ -209,6 +224,7 @@ namespace GameCore.Sim
                 AuditFired = ctx.AuditOccurred,
                 BetrayalFired = ctx.BetrayalOccurred,
                 EndReason = s.EndReason,
+                EventFired = ctx.EventFired,
             };
 
         private static float Clamp01(float v) => v < 0f ? 0f : v > 1f ? 1f : v;

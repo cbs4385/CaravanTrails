@@ -1,3 +1,5 @@
+using GameCore.Events;
+
 namespace GameCore.Sim
 {
     // Per-tick intermediate values — not persistent state, but passed between systems within a tick.
@@ -15,5 +17,6 @@ namespace GameCore.Sim
         public bool AuditOccurred;
         public bool AuditFailed;
         public float AuditFineAmount;
+        public EventType EventFired = EventType.None;
     }
 }

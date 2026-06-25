@@ -1,4 +1,5 @@
 using System;
+using GameCore.Events;
 
 namespace GameCore.Sim
 {
@@ -11,6 +12,7 @@ namespace GameCore.Sim
         public int OrganizedCrimeLevelDelta;    // how many levels to invest in this tick (cost deducted from purse)
         public UpgradePurchase Upgrade;
         public float BribeAmount;               // purse spend → heat reduction
+        public EventOption EventChoice;         // response to PendingEvent from last tick
 
         public static PlayerInput Passive => new PlayerInput
         {

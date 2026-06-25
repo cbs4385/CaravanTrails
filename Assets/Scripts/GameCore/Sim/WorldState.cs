@@ -1,4 +1,5 @@
 using System;
+using GameCore.Events;
 
 namespace GameCore.Sim
 {
@@ -28,6 +29,9 @@ namespace GameCore.Sim
         // End state
         public bool IsGameOver;
         public EndReason EndReason;
+
+        // Active event awaiting player response (null = none pending)
+        public PendingEvent PendingEvent;
 
         public WorldState Clone() => (WorldState)MemberwiseClone();
 
