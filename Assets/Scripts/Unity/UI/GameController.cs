@@ -144,8 +144,10 @@ public class GameController : MonoBehaviour
             * Mathf.Pow(cfg.UpgradeCollectionCostScalePerLevel, s.CollectionUpgradeLevel);
         float heatCost = cfg.UpgradeHeatDecayCostBase
             * Mathf.Pow(cfg.UpgradeHeatDecayCostScalePerLevel, s.HeatDecayUpgradeLevel);
-        _collUpgTxt.text = $"Collection  Lv {s.CollectionUpgradeLevel}  §{collCost:F0}";
-        _heatUpgTxt.text = $"Heat Decay  Lv {s.HeatDecayUpgradeLevel}  §{heatCost:F0}";
+        _collUpgTxt.text = $"Collection  Lv {s.CollectionUpgradeLevel}  §{collCost:F0}" +
+            (_pendingUpgrade == UpgradePurchase.Collection ? "  [queued]" : "");
+        _heatUpgTxt.text = $"Heat Decay  Lv {s.HeatDecayUpgradeLevel}  §{heatCost:F0}" +
+            (_pendingUpgrade == UpgradePurchase.HeatDecay  ? "  [queued]" : "");
 
         if (s.IsGameOver)
             ShowGameOverPanel(s);
@@ -266,13 +268,15 @@ public class GameController : MonoBehaviour
         _collUpgTxt = MkTxt(lp, "Collection  Lv 0  §60", 12, xp, y, cw - 54f, 22f,
             TextAnchor.MiddleLeft, new Color(0.80f, 0.70f, 0.54f));
         MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
-            () => _pendingUpgrade = UpgradePurchase.Collection, new Color(0.30f, 0.20f, 0.08f));
+            () => { _pendingUpgrade = UpgradePurchase.Collection; Refresh(); },
+            new Color(0.30f, 0.20f, 0.08f));
         y -= 28f;
 
         _heatUpgTxt = MkTxt(lp, "Heat Decay  Lv 0  §80", 12, xp, y, cw - 54f, 22f,
             TextAnchor.MiddleLeft, new Color(0.80f, 0.70f, 0.54f));
         MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
-            () => _pendingUpgrade = UpgradePurchase.HeatDecay, new Color(0.30f, 0.20f, 0.08f));
+            () => { _pendingUpgrade = UpgradePurchase.HeatDecay; Refresh(); },
+            new Color(0.30f, 0.20f, 0.08f));
         y -= 28f;
 
         y -= 8f;
