@@ -22,6 +22,8 @@ public class GameController : MonoBehaviour
 
     // ── UI refs ───────────────────────────────────────────────────────────────
 
+    static Sprite _roundedSprite;
+
     Slider _taxSl, _skimSl, _bribeSl, _unorgSl;
     Text   _taxVal, _skimVal, _bribeVal, _unorgVal;
     Text   _tickTxt, _purseTxt, _coffersTxt, _heatTxt;
@@ -136,6 +138,8 @@ public class GameController : MonoBehaviour
 
     void BuildUI()
     {
+        _roundedSprite = CreateRoundedSprite(32, 6);
+
         // Canvas
         var cGO = new GameObject("Canvas");
         var cv  = cGO.AddComponent<Canvas>();
@@ -149,21 +153,21 @@ public class GameController : MonoBehaviour
 
         // Title strip (left panel width only)
         var titleBg = MkRT(root, "TitleBg", 0, 685, 300, 35);
-        BgImg(titleBg, new Color(0.07f, 0.07f, 0.09f, 0.88f));
-        MkTxt(titleBg, "The Prefect's Cut", 16, 0, 0, 300, 35, TextAnchor.MiddleCenter, Color.white);
+        BgImg(titleBg, new Color(0.14f, 0.09f, 0.05f, 0.95f));
+        MkTxt(titleBg, "The Prefect's Cut", 16, 0, 0, 300, 35, TextAnchor.MiddleCenter, new Color(0.96f, 0.88f, 0.68f));
 
         // Left panel: controls (narrow, anchored to left edge)
         const float PW = 295f;  // panel width
-        var lp = MkRT(root, "Controls",    0,  0, PW, 685); BgImg(lp, new Color(0.07f, 0.07f, 0.09f, 0.88f));
+        var lp = MkRT(root, "Controls",    0,  0, PW, 685); BgImg(lp, new Color(0.14f, 0.09f, 0.05f, 0.93f));
         // Right panel: state readouts (narrow, anchored to right edge)
-        var rp = MkRT(root, "State", 1280 - PW, 0, PW, 685); BgImg(rp, new Color(0.07f, 0.07f, 0.09f, 0.88f));
+        var rp = MkRT(root, "State", 1280 - PW, 0, PW, 685); BgImg(rp, new Color(0.14f, 0.09f, 0.05f, 0.93f));
 
         // ── Left panel: controls ───────────────────────────────────────────
 
         const float xp = 10f, cw = PW - 20f;
         float y = 650f;
 
-        MkTxt(lp, "─ CONTROLS ─", 12, xp, y, cw, 18f, TextAnchor.MiddleLeft, new Color(0.55f, 0.75f, 0.55f));
+        MkTxt(lp, "─ CONTROLS ─", 12, xp, y, cw, 18f, TextAnchor.MiddleLeft, new Color(0.96f, 0.78f, 0.42f));
         y -= 24f;
 
         SliderRow(lp, "Tax Rate",     ref y, xp, cw, 0f, 0.60f, 0.15f, v => _taxVal.text   = $"{v:P0}",  out _taxSl,   out _taxVal);
@@ -178,10 +182,10 @@ public class GameController : MonoBehaviour
         y -= 34f;
 
         y -= 8f;
-        MkBtn(lp, "▶  NEXT TICK", xp, y, cw, 38f, DoTick, new Color(0.18f, 0.42f, 0.18f));
+        MkBtn(lp, "▶  NEXT TICK", xp, y, cw, 38f, DoTick, new Color(0.52f, 0.34f, 0.08f));
         y -= 46f;
 
-        var autoBtn = MkBtn(lp, "Auto: OFF", xp, y, 130f, 26f, ToggleAuto, new Color(0.18f, 0.18f, 0.28f));
+        var autoBtn = MkBtn(lp, "Auto: OFF", xp, y, 130f, 26f, ToggleAuto, new Color(0.36f, 0.22f, 0.08f));
         _autoLbl = autoBtn.GetComponentInChildren<Text>();
         MkBtn(lp, "New Game", xp + 140f, y, 130f, 26f, () => { NewGame(); Refresh(); });
 
@@ -190,17 +194,17 @@ public class GameController : MonoBehaviour
         const float rx = 10f, tw = PW - 20f;
         float ry = 650f;
 
-        MkTxt(rp, "─ STATE ─", 12, rx, ry, tw, 18f, TextAnchor.MiddleLeft, new Color(0.55f, 0.75f, 0.55f));
+        MkTxt(rp, "─ STATE ─", 12, rx, ry, tw, 18f, TextAnchor.MiddleLeft, new Color(0.96f, 0.78f, 0.42f));
         ry -= 24f;
 
-        _tickTxt    = MkTxt(rp, "Tick 0", 15, rx, ry, tw, 22f, TextAnchor.MiddleLeft, new Color(0.70f, 0.78f, 1.00f));
+        _tickTxt    = MkTxt(rp, "Tick 0", 15, rx, ry, tw, 22f, TextAnchor.MiddleLeft, new Color(0.96f, 0.84f, 0.54f));
         ry -= 32f;
 
         _purseTxt   = StatLine(rp, rx, tw, ref ry);
         _coffersTxt = StatLine(rp, rx, tw, ref ry);
 
         ry -= 6f;
-        BgImg(MkRT(rp, "Div1", rx, ry, tw - 24f, 1f), new Color(0.28f, 0.28f, 0.33f));
+        BgImg(MkRT(rp, "Div1", rx, ry, tw - 24f, 1f), new Color(0.42f, 0.30f, 0.12f));
         ry -= 9f;
 
         _heatTxt   = StatLine(rp, rx, tw, ref ry);
@@ -209,7 +213,7 @@ public class GameController : MonoBehaviour
         _repTxt    = StatLine(rp, rx, tw, ref ry);
 
         ry -= 6f;
-        BgImg(MkRT(rp, "Div2", rx, ry, tw - 24f, 1f), new Color(0.28f, 0.28f, 0.33f));
+        BgImg(MkRT(rp, "Div2", rx, ry, tw - 24f, 1f), new Color(0.42f, 0.30f, 0.12f));
         ry -= 9f;
 
         _orgLvTxt  = StatLine(rp, rx, tw, ref ry);
@@ -243,6 +247,7 @@ public class GameController : MonoBehaviour
         var img = rt.gameObject.GetComponent<Image>();
         if (img == null) img = rt.gameObject.AddComponent<Image>();
         img.color = c;
+        if (_roundedSprite != null) { img.sprite = _roundedSprite; img.type = Image.Type.Sliced; }
         return img;
     }
 
@@ -272,7 +277,8 @@ public class GameController : MonoBehaviour
     {
         var rt  = MkRT(parent, "Btn", x, y, w, h);
         var img = rt.gameObject.AddComponent<Image>();
-        img.color = bg ?? new Color(0.20f, 0.20f, 0.26f);
+        img.color = bg ?? new Color(0.36f, 0.22f, 0.08f);
+        if (_roundedSprite != null) { img.sprite = _roundedSprite; img.type = Image.Type.Sliced; }
         var btn = rt.gameObject.AddComponent<Button>();
         btn.targetGraphic = img;
         btn.onClick.AddListener(() => onClick());
@@ -292,12 +298,12 @@ public class GameController : MonoBehaviour
         float x, float y, float w, float h, float min, float max, float val)
     {
         var rt = MkRT(parent, "Slider", x, y, w, h);
-        BgImg(rt, new Color(0.18f, 0.18f, 0.20f));
+        BgImg(rt, new Color(0.24f, 0.16f, 0.08f));
 
         // Fill: Image.Type.Filled so Slider can drive fillAmount directly
         var fillRT  = MkRT(rt, "Fill", 0, 0, w, h);
         var fillImg = fillRT.gameObject.AddComponent<Image>();
-        fillImg.color      = new Color(0.28f, 0.62f, 0.32f);
+        fillImg.color      = new Color(0.78f, 0.55f, 0.15f);
         fillImg.type       = Image.Type.Filled;
         fillImg.fillMethod = Image.FillMethod.Horizontal;
         fillImg.fillAmount = 0f;
@@ -314,7 +320,7 @@ public class GameController : MonoBehaviour
         handleRT.anchoredPosition = Vector2.zero;
         handleRT.sizeDelta        = new Vector2(h * 1.1f, h * 1.1f);
         var handleImg = handleRT.gameObject.AddComponent<Image>();
-        handleImg.color = new Color(0.72f, 0.90f, 0.72f);
+        handleImg.color = new Color(0.96f, 0.82f, 0.50f);
 
         var sl          = rt.gameObject.AddComponent<Slider>();
         sl.fillRect     = fillRT;
@@ -327,6 +333,34 @@ public class GameController : MonoBehaviour
         return sl;
     }
 
+    static Sprite CreateRoundedSprite(int size, int r)
+    {
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        tex.filterMode = FilterMode.Bilinear;
+        var px = new Color32[size * size];
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+                px[y * size + x] = RoundedAlpha(x, y, size, size, r);
+        tex.SetPixels32(px);
+        tex.Apply();
+        float b = r;
+        return Sprite.Create(tex, new Rect(0, 0, size, size),
+                             new Vector2(0.5f, 0.5f), 100f, 0,
+                             SpriteMeshType.FullRect,
+                             new Vector4(b, b, b, b));
+    }
+
+    static Color32 RoundedAlpha(int x, int y, int w, int h, int r)
+    {
+        bool inside;
+        if      (x < r     && y < r)     inside = (x-r)*(x-r)     + (y-r)*(y-r)     <= r*r;
+        else if (x > w-1-r && y < r)     inside = (x-(w-1-r))*(x-(w-1-r)) + (y-r)*(y-r)     <= r*r;
+        else if (x < r     && y > h-1-r) inside = (x-r)*(x-r)     + (y-(h-1-r))*(y-(h-1-r)) <= r*r;
+        else if (x > w-1-r && y > h-1-r) inside = (x-(w-1-r))*(x-(w-1-r)) + (y-(h-1-r))*(y-(h-1-r)) <= r*r;
+        else inside = true;
+        return inside ? new Color32(255, 255, 255, 255) : new Color32(0, 0, 0, 0);
+    }
+
     void SliderRow(RectTransform parent, string label, ref float y,
         float x, float panelW, float min, float max, float val,
         Action<float> onChange, out Slider slider, out Text valueText)
@@ -334,7 +368,7 @@ public class GameController : MonoBehaviour
         const float lh = 18f, sh = 20f, valW = 60f;
         string initTxt = max > 1f ? $"§{val:F0}" : $"{val:P0}";
         MkTxt(parent, label, 13, x, y, panelW - valW, lh,
-            TextAnchor.MiddleLeft, new Color(0.72f, 0.72f, 0.72f));
+            TextAnchor.MiddleLeft, new Color(0.80f, 0.70f, 0.54f));
         valueText = MkTxt(parent, initTxt, 13, x + panelW - valW, y, valW, lh,
             TextAnchor.MiddleRight, Color.white);
         y -= lh + 2f;

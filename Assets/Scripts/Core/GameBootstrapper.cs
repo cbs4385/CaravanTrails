@@ -16,6 +16,7 @@ public class GameBootstrapper : MonoBehaviour
 {
     static List<BuildingDefinition> _catalogBuildings;
     static List<UnitDefinition>     _catalogUnits;
+    static Sprite                   _roundedSprite;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void AutoCreate()
@@ -332,6 +333,8 @@ public class GameBootstrapper : MonoBehaviour
 
     void CreateUI()
     {
+        _roundedSprite = CreateRoundedSprite(32, 6);
+
         if (FindFirstObjectByType<EventSystem>() == null)
         {
             var esGO = new GameObject("EventSystem");
@@ -382,7 +385,7 @@ public class GameBootstrapper : MonoBehaviour
         var hud = Panel(canvasT, "HUD",
             new Vector2(0,1), new Vector2(1,1),
             new Vector2(0,-60), new Vector2(0,0),
-            new Color(0.05f, 0.05f, 0.10f, 0.90f));
+            new Color(0.14f, 0.09f, 0.05f, 0.95f));
 
         var hl = hud.AddComponent<HorizontalLayoutGroup>();
         hl.childAlignment       = TextAnchor.MiddleLeft;
@@ -391,14 +394,14 @@ public class GameBootstrapper : MonoBehaviour
         hl.childForceExpandHeight = true;
 
         var hc                = hud.AddComponent<HUDController>();
-        hc.dayLabel           = Lbl(hud.transform, "Day 0",       180, 20);
-        hc.balanceLabel       = Lbl(hud.transform, "Gold: 500",   180, 20, color: new Color(1f,0.9f,0.3f));
-        hc.taxLabel           = Lbl(hud.transform, "Tax:   —",    150, 18);
-        hc.crimeLabel         = Lbl(hud.transform, "Crime: —",    150, 18);
-        hc.upkeepLabel        = Lbl(hud.transform, "Upkeep: —",   150, 18);
-        hc.placementHintLabel = Lbl(hud.transform, "",            340, 18, color: new Color(1f, 0.85f, 0.3f));
-        hc.shopButton         = Btn(hud.transform, "Shop",         80, 32, new Color(0.25f, 0.45f, 0.25f));
-        hc.statsButton        = Btn(hud.transform, "Rankings",    100, 32, new Color(0.25f, 0.25f, 0.55f));
+        hc.dayLabel           = Lbl(hud.transform, "Day 0",       180, 20, color: new Color(0.92f, 0.84f, 0.70f));
+        hc.balanceLabel       = Lbl(hud.transform, "Gold: 500",   180, 20, color: new Color(1.00f, 0.85f, 0.28f));
+        hc.taxLabel           = Lbl(hud.transform, "Tax:   —",    150, 18, color: new Color(0.80f, 0.70f, 0.54f));
+        hc.crimeLabel         = Lbl(hud.transform, "Crime: —",    150, 18, color: new Color(0.80f, 0.70f, 0.54f));
+        hc.upkeepLabel        = Lbl(hud.transform, "Upkeep: —",   150, 18, color: new Color(0.80f, 0.70f, 0.54f));
+        hc.placementHintLabel = Lbl(hud.transform, "",            340, 18, color: new Color(1.00f, 0.85f, 0.28f));
+        hc.shopButton         = Btn(hud.transform, "Shop",         80, 32, new Color(0.52f, 0.34f, 0.08f));
+        hc.statsButton        = Btn(hud.transform, "Rankings",    100, 32, new Color(0.36f, 0.22f, 0.08f));
         return hud;
     }
 
@@ -411,7 +414,7 @@ public class GameBootstrapper : MonoBehaviour
         var panel = Panel(canvasT, "TownPanel",
             new Vector2(1,0), new Vector2(1,1),
             new Vector2(-290,60), new Vector2(0,-60),
-            new Color(0.05f,0.05f,0.12f,0.93f));
+            new Color(0.14f, 0.09f, 0.05f, 0.95f));
 
         var vl = panel.AddComponent<VerticalLayoutGroup>();
         vl.childAlignment       = TextAnchor.UpperLeft;
@@ -420,10 +423,10 @@ public class GameBootstrapper : MonoBehaviour
         vl.childForceExpandWidth = true;
 
         var tp            = panel.AddComponent<TownPanel>();
-        tp.nameLabel      = Lbl(panel.transform, "Town",           266, 24, bold:true);
-        tp.populationLabel= Lbl(panel.transform, "Population: —",  266, 20);
-        tp.tradeLabel     = Lbl(panel.transform, "Trade: —",       266, 20);
-        tp.taxRevenueLabel= Lbl(panel.transform, "Tax Rev: —",     266, 20);
+        tp.nameLabel      = Lbl(panel.transform, "Town",           266, 24, bold:true, color: new Color(0.96f, 0.88f, 0.68f));
+        tp.populationLabel= Lbl(panel.transform, "Population: —",  266, 20, color: new Color(0.82f, 0.72f, 0.56f));
+        tp.tradeLabel     = Lbl(panel.transform, "Trade: —",       266, 20, color: new Color(0.82f, 0.72f, 0.56f));
+        tp.taxRevenueLabel= Lbl(panel.transform, "Tax Rev: —",     266, 20, color: new Color(0.82f, 0.72f, 0.56f));
 
         // Tax slider group (only shown for player town)
         var taxGrp = new GameObject("TaxGroup");
@@ -435,11 +438,11 @@ public class GameBootstrapper : MonoBehaviour
         taxVl.spacing              = 2;
         taxVl.childForceExpandWidth = true;
         tp.taxControlGroup = taxGrp;
-        tp.taxRateLabel    = Lbl(taxGrp.transform, "Tax Rate: 0%", 266, 20);
+        tp.taxRateLabel    = Lbl(taxGrp.transform, "Tax Rate: 0%", 266, 20, color: new Color(0.82f, 0.72f, 0.56f));
         tp.taxSlider       = MakeSlider(taxGrp.transform, 266, 28);
 
-        tp.buildingsLabel = Lbl(panel.transform, "Buildings: 0", 266, 20);
-        tp.openShopButton = Btn(panel.transform, "Open Shop", 266, 38, new Color(0.25f,0.25f,0.65f));
+        tp.buildingsLabel = Lbl(panel.transform, "Buildings: 0", 266, 20, color: new Color(0.82f, 0.72f, 0.56f));
+        tp.openShopButton = Btn(panel.transform, "Open Shop", 266, 38, new Color(0.52f, 0.34f, 0.08f));
         return panel;
     }
 
@@ -452,7 +455,7 @@ public class GameBootstrapper : MonoBehaviour
         var panel = Panel(canvasT, "RoutePanel",
             new Vector2(1,0), new Vector2(1,1),
             new Vector2(-290,60), new Vector2(0,-60),
-            new Color(0.05f,0.05f,0.12f,0.93f));
+            new Color(0.14f, 0.09f, 0.05f, 0.95f));
 
         var vl = panel.AddComponent<VerticalLayoutGroup>();
         vl.childAlignment       = TextAnchor.UpperLeft;
@@ -461,12 +464,12 @@ public class GameBootstrapper : MonoBehaviour
         vl.childForceExpandWidth = true;
 
         var rp               = panel.AddComponent<RoutePanel>();
-        rp.routeNameLabel    = Lbl(panel.transform, "Route",           266, 24, bold:true);
-        rp.flowLabel         = Lbl(panel.transform, "Trade Flow: —",   266, 20);
-        rp.naturalCrimeLabel = Lbl(panel.transform, "Natural Crime: —",266, 20);
-        rp.playerCrimeLabel  = Lbl(panel.transform, "Controlled: —",   266, 20);
-        rp.unitsLabel        = Lbl(panel.transform, "Units: 0",        266, 20);
-        rp.openShopButton    = Btn(panel.transform, "Open Shop", 266, 38, new Color(0.25f,0.25f,0.65f));
+        rp.routeNameLabel    = Lbl(panel.transform, "Route",           266, 24, bold:true, color: new Color(0.96f, 0.88f, 0.68f));
+        rp.flowLabel         = Lbl(panel.transform, "Trade Flow: —",   266, 20, color: new Color(0.82f, 0.72f, 0.56f));
+        rp.naturalCrimeLabel = Lbl(panel.transform, "Natural Crime: —",266, 20, color: new Color(0.82f, 0.72f, 0.56f));
+        rp.playerCrimeLabel  = Lbl(panel.transform, "Controlled: —",   266, 20, color: new Color(0.82f, 0.72f, 0.56f));
+        rp.unitsLabel        = Lbl(panel.transform, "Units: 0",        266, 20, color: new Color(0.82f, 0.72f, 0.56f));
+        rp.openShopButton    = Btn(panel.transform, "Open Shop", 266, 38, new Color(0.52f, 0.34f, 0.08f));
         return panel;
     }
 
@@ -479,7 +482,7 @@ public class GameBootstrapper : MonoBehaviour
         var panel = Panel(canvasT, "ShopPanel",
             new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f),
             new Vector2(-240,-300), new Vector2(240,300),
-            new Color(0.07f,0.07f,0.17f,0.97f));
+            new Color(0.12f, 0.07f, 0.03f, 0.97f));
         panel.SetActive(false);
 
         var vl = panel.AddComponent<VerticalLayoutGroup>();
@@ -490,6 +493,7 @@ public class GameBootstrapper : MonoBehaviour
 
         var sp          = panel.AddComponent<ShopPanel>();
         sp.titleLabel   = Lbl(panel.transform, "Shop", 456, 26, bold:true,
+                              color: new Color(0.96f, 0.88f, 0.68f),
                               align: TextAlignmentOptions.Center);
 
         sp.itemContainer  = MakeScrollContent(panel.transform, 456, 480);
@@ -500,7 +504,7 @@ public class GameBootstrapper : MonoBehaviour
         sp.buildingCatalogue = _catalogBuildings;
         sp.unitCatalogue     = _catalogUnits;
 
-        sp.closeButton = Btn(panel.transform, "Close", 456, 38, new Color(0.55f,0.18f,0.18f));
+        sp.closeButton = Btn(panel.transform, "Close", 456, 38, new Color(0.52f, 0.16f, 0.06f));
         return panel;
     }
 
@@ -513,7 +517,7 @@ public class GameBootstrapper : MonoBehaviour
         var panel = Panel(canvasT, "StatsPanel",
             new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f),
             new Vector2(-290,-270), new Vector2(290,270),
-            new Color(0.05f,0.05f,0.14f,0.97f));
+            new Color(0.12f, 0.07f, 0.03f, 0.97f));
         panel.SetActive(false);
 
         var vl = panel.AddComponent<VerticalLayoutGroup>();
@@ -524,7 +528,7 @@ public class GameBootstrapper : MonoBehaviour
 
         var sp = panel.AddComponent<StatsPanel>();
 
-        Lbl(panel.transform, "Rankings", 548, 24, bold:true, align:TextAlignmentOptions.Center);
+        Lbl(panel.transform, "Rankings", 548, 24, bold:true, color: new Color(0.96f, 0.88f, 0.68f), align:TextAlignmentOptions.Center);
 
         // Five rank rows
         sp.rankRows = new TMPro.TextMeshProUGUI[5];
@@ -536,10 +540,10 @@ public class GameBootstrapper : MonoBehaviour
         sep.transform.SetParent(panel.transform, false);
         var sepRt = sep.AddComponent<RectTransform>();
         sepRt.sizeDelta = new Vector2(548, 2);
-        sep.AddComponent<Image>().color = new Color(0.3f,0.3f,0.4f);
+        sep.AddComponent<Image>().color = new Color(0.42f, 0.30f, 0.12f);
 
         Lbl(panel.transform, "Wealth Over Time", 548, 18,
-            color: new Color(0.7f,0.7f,0.85f), align:TextAlignmentOptions.Center);
+            color: new Color(0.72f, 0.62f, 0.44f), align:TextAlignmentOptions.Center);
 
         // Graph image
         var graphGO = new GameObject("Graph");
@@ -551,7 +555,7 @@ public class GameBootstrapper : MonoBehaviour
         sp.graphImage = graphGO.AddComponent<RawImage>();
         sp.graphImage.color = Color.white;
 
-        sp.closeButton = Btn(panel.transform, "Close", 548, 36, new Color(0.45f,0.15f,0.15f));
+        sp.closeButton = Btn(panel.transform, "Close", 548, 36, new Color(0.52f, 0.16f, 0.06f));
     }
 
     static void BuildGameOverPanel(Transform canvasT)
@@ -570,7 +574,9 @@ public class GameBootstrapper : MonoBehaviour
         boxRt.anchorMin = new Vector2(0.5f, 0.5f);
         boxRt.anchorMax = new Vector2(0.5f, 0.5f);
         boxRt.sizeDelta = new Vector2(540, 290);
-        box.AddComponent<Image>().color = new Color(0.07f, 0.03f, 0.03f, 1f);
+        var boxImg = box.AddComponent<Image>();
+        boxImg.color = new Color(0.14f, 0.06f, 0.02f, 1f);
+        if (_roundedSprite != null) { boxImg.sprite = _roundedSprite; boxImg.type = Image.Type.Sliced; }
 
         var vl = box.AddComponent<VerticalLayoutGroup>();
         vl.childAlignment        = TextAnchor.UpperCenter;
@@ -580,15 +586,15 @@ public class GameBootstrapper : MonoBehaviour
 
         Lbl(box.transform, "BANKRUPT", 500, 56,
             bold: true,
-            color: new Color(0.92f, 0.18f, 0.12f),
+            color: new Color(0.90f, 0.28f, 0.06f),
             align: TextAlignmentOptions.Center);
 
         var gop           = overlay.AddComponent<GameOverPanel>();
         gop.subtitleLabel = Lbl(box.transform, "", 500, 80,
-            color: new Color(0.86f, 0.80f, 0.68f),
+            color: new Color(0.88f, 0.80f, 0.62f),
             align: TextAlignmentOptions.Center);
         gop.restartButton = Btn(box.transform, "Play Again", 200, 44,
-            new Color(0.18f, 0.42f, 0.18f));
+            new Color(0.22f, 0.48f, 0.10f));
     }
 
     static GameObject BuildShopItemPrefab()
@@ -597,7 +603,9 @@ public class GameBootstrapper : MonoBehaviour
         item.SetActive(false);
         var rt  = item.AddComponent<RectTransform>();
         rt.sizeDelta = new Vector2(432, 68);
-        item.AddComponent<Image>().color = new Color(0.14f,0.14f,0.24f,1f);
+        var itemImg = item.AddComponent<Image>();
+        itemImg.color = new Color(0.20f, 0.13f, 0.07f, 1f);
+        if (_roundedSprite != null) { itemImg.sprite = _roundedSprite; itemImg.type = Image.Type.Sliced; }
         var le  = item.AddComponent<LayoutElement>();
         le.minHeight = 68f;
         le.preferredHeight = 68f;
@@ -606,9 +614,9 @@ public class GameBootstrapper : MonoBehaviour
         vl.padding = new RectOffset(8, 8, 4, 4);
         vl.spacing = 1;
         vl.childForceExpandWidth = true;
-        Lbl(item.transform, "Item Name",    432, 22, bold:true);
-        Lbl(item.transform, "Description", 432, 18, color: new Color(0.7f,0.7f,0.7f));
-        Btn(item.transform,  "Buy", 80, 26, new Color(0.2f,0.5f,0.2f));
+        Lbl(item.transform, "Item Name",    432, 22, bold:true, color: new Color(0.96f, 0.88f, 0.68f));
+        Lbl(item.transform, "Description", 432, 18, color: new Color(0.68f, 0.58f, 0.42f));
+        Btn(item.transform,  "Buy", 80, 26, new Color(0.26f, 0.46f, 0.10f));
         return item;
     }
 
@@ -721,7 +729,9 @@ public class GameBootstrapper : MonoBehaviour
         rt.anchorMax = anchorMax;
         rt.offsetMin = offsetMin;
         rt.offsetMax = offsetMax;
-        go.AddComponent<Image>().color = bg;
+        var img = go.AddComponent<Image>();
+        img.color = bg;
+        if (_roundedSprite != null) { img.sprite = _roundedSprite; img.type = Image.Type.Sliced; }
         return go;
     }
 
@@ -748,7 +758,9 @@ public class GameBootstrapper : MonoBehaviour
         go.transform.SetParent(parent, false);
         var rt  = go.AddComponent<RectTransform>();
         rt.sizeDelta = new Vector2(w, h);
-        go.AddComponent<Image>().color = bg;
+        var bImg = go.AddComponent<Image>();
+        bImg.color = bg;
+        if (_roundedSprite != null) { bImg.sprite = _roundedSprite; bImg.type = Image.Type.Sliced; }
         var btn = go.AddComponent<Button>();
         var cb  = btn.colors;
         cb.highlightedColor = bg * 1.3f;
@@ -771,7 +783,7 @@ public class GameBootstrapper : MonoBehaviour
         var bgRt = bg.AddComponent<RectTransform>();
         bgRt.anchorMin = Vector2.zero; bgRt.anchorMax = Vector2.one;
         bgRt.offsetMin = Vector2.zero; bgRt.offsetMax = Vector2.zero;
-        bg.AddComponent<Image>().color = new Color(0.2f, 0.2f, 0.2f);
+        bg.AddComponent<Image>().color = new Color(0.24f, 0.16f, 0.08f);
 
         // Fill area
         var fa = new GameObject("FillArea");
@@ -785,7 +797,7 @@ public class GameBootstrapper : MonoBehaviour
         var fillRt = fill.AddComponent<RectTransform>();
         fillRt.anchorMin = Vector2.zero; fillRt.anchorMax = new Vector2(0.1f, 1f);
         fillRt.offsetMin = Vector2.zero; fillRt.offsetMax  = Vector2.zero;
-        fill.AddComponent<Image>().color = new Color(0.2f, 0.6f, 0.8f);
+        fill.AddComponent<Image>().color = new Color(0.78f, 0.55f, 0.15f);
         slider.fillRect = fillRt;
 
         // Handle
@@ -808,6 +820,38 @@ public class GameBootstrapper : MonoBehaviour
         slider.maxValue = 1f;
         slider.value    = 0.1f;
         return slider;
+    }
+
+    // =========================================================================
+    //  Rounded-corner sprite  (9-sliced so it stretches to any panel size)
+    // =========================================================================
+
+    static Sprite CreateRoundedSprite(int size, int r)
+    {
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        tex.filterMode = FilterMode.Bilinear;
+        var px = new Color32[size * size];
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+                px[y * size + x] = RoundedAlpha(x, y, size, size, r);
+        tex.SetPixels32(px);
+        tex.Apply();
+        float b = r;
+        return Sprite.Create(tex, new Rect(0, 0, size, size),
+                             new Vector2(0.5f, 0.5f), 100f, 0,
+                             SpriteMeshType.FullRect,
+                             new Vector4(b, b, b, b));
+    }
+
+    static Color32 RoundedAlpha(int x, int y, int w, int h, int r)
+    {
+        bool inside;
+        if      (x < r     && y < r)     inside = (x-r)*(x-r)     + (y-r)*(y-r)     <= r*r;
+        else if (x > w-1-r && y < r)     inside = (x-(w-1-r))*(x-(w-1-r)) + (y-r)*(y-r)     <= r*r;
+        else if (x < r     && y > h-1-r) inside = (x-r)*(x-r)     + (y-(h-1-r))*(y-(h-1-r)) <= r*r;
+        else if (x > w-1-r && y > h-1-r) inside = (x-(w-1-r))*(x-(w-1-r)) + (y-(h-1-r))*(y-(h-1-r)) <= r*r;
+        else inside = true;
+        return inside ? new Color32(255, 255, 255, 255) : new Color32(0, 0, 0, 0);
     }
 
     static Transform MakeScrollContent(Transform parent, float w, float h)

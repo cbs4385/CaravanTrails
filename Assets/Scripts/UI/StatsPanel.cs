@@ -69,11 +69,11 @@ public class StatsPanel : MonoBehaviour
     {
         // Dark background
         var pixels = new Color[TexW * TexH];
-        var bg     = new Color(0.06f, 0.06f, 0.12f);
+        var bg     = new Color(0.07f, 0.04f, 0.02f);
         for (int i = 0; i < pixels.Length; i++) pixels[i] = bg;
 
         // Subtle grid — horizontal lines at 25 %, 50 %, 75 %
-        var grid = new Color(0.18f, 0.18f, 0.25f);
+        var grid = new Color(0.28f, 0.18f, 0.08f);
         foreach (int frac in new[] { 25, 50, 75 })
         {
             int y = frac * (TexH - 1) / 100;
