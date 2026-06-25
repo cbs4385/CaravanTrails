@@ -134,6 +134,60 @@ public static class SimHarness
         }
         sweeps.Add(crimeSweep);
 
+        // §3 Event impact — org2-level strategy with three event response policies.
+        // Isolates the net cost of events from strategy differences.
+        var eventSweep = new SweepSpec { Name = "event_impact", SeedCount = 20, MaxTicks = 200 };
+
+        foreach (var spec in new[]
+        {
+            new { id = "org2_dismiss",     eventOpt = 0 },  // auto-dismiss (baseline)
+            new { id = "org2_pay_all",     eventOpt = 1 },  // always OptionA (pay/comply)
+            new { id = "org2_refuse_all",  eventOpt = 2 },  // always OptionB (stonewall/refuse)
+        })
+        {
+            int  opt        = spec.eventOpt;
+            int  orgTarget  = 2;
+            float bribeAmt  = 5f;
+            float setupCost = new SimConfig().OrganizedCrimeSetupCostPerLevel;
+            float setupNeeded = orgTarget * setupCost;
+
+            eventSweep.Configs.Add(new ConfigEntry
+            {
+                Id = spec.id,
+                Config = new SimConfig(),
+                CreateStrategy = () =>
+                {
+                    bool inCrimePhase = false;
+                    return state =>
+                    {
+                        if (!inCrimePhase && state.Purse >= setupNeeded)
+                            inCrimePhase = true;
+
+                        int delta = 0;
+                        if (inCrimePhase && state.OrganizedCrimeLevel < orgTarget && state.Purse >= setupCost)
+                            delta = 1;
+
+                        GameCore.Events.EventOption choice = GameCore.Events.EventOption.None;
+                        if (state.PendingEvent != null)
+                        {
+                            if      (opt == 1) choice = GameCore.Events.EventOption.OptionA;
+                            else if (opt == 2) choice = GameCore.Events.EventOption.OptionB;
+                        }
+
+                        return new PlayerInput
+                        {
+                            TaxRate                  = 0.20f,
+                            SkimFraction             = inCrimePhase ? 0.10f : 0.40f,
+                            OrganizedCrimeLevelDelta = delta,
+                            BribeAmount              = inCrimePhase ? bribeAmt : 0f,
+                            EventChoice              = choice,
+                        };
+                    };
+                },
+            });
+        }
+        sweeps.Add(eventSweep);
+
         return sweeps;
     }
 
@@ -168,6 +222,7 @@ public static class SimHarness
         int   firstHeat75Tick = -1;
         float totalSkimmed    = 0f;
         float totalCoffers    = 0f;
+        int   totalEvents     = 0;
         float threshold75     = config.AuditThreshold * 0.75f;
 
         foreach (var row in sim.Telemetry)
@@ -178,6 +233,8 @@ public static class SimHarness
                 firstHeat75Tick = row.Tick;
             totalSkimmed += row.SkimmedAmount;
             totalCoffers += row.CoffersContribution;
+            if (row.EventFired != GameCore.Events.EventType.None)
+                totalEvents++;
         }
 
         return new RunSummary
@@ -196,6 +253,7 @@ public static class SimHarness
             EndReason              = sim.State.EndReason,
             TotalSkimmed           = totalSkimmed,
             TotalCoffersContribution = totalCoffers,
+            TotalEventsFired       = totalEvents,
             Telemetry              = new List<TelemetryRecord>(sim.Telemetry),
         };
     }
@@ -260,7 +318,7 @@ public static class SimHarness
             "wealth_win_pct,audit_arrest_pct,rival_overthrow_pct," +
             "mean_peak_heat,mean_first_heat75_tick," +
             "mean_final_safety,mean_total_skimmed,mean_total_coffers," +
-            "mean_skim_to_coffers_ratio");
+            "mean_skim_to_coffers_ratio,mean_events_fired");
 
         foreach (var cfgId in order)
         {
@@ -278,7 +336,8 @@ public static class SimHarness
             float meanFirstHeat75  = Avg(runs, r => r.FirstHeat75Tick >= 0 ? r.FirstHeat75Tick : r.FinalTick);
             float meanFinalSafety  = Avg(runs, r => r.FinalSafety);
             float meanTotalSkim    = Avg(runs, r => r.TotalSkimmed);
-            float meanTotalCoffers = Avg(runs, r => r.TotalCoffersContribution);
+            float meanTotalCoffers  = Avg(runs, r => r.TotalCoffersContribution);
+            float meanEventsFired   = Avg(runs, r => r.TotalEventsFired);
             // pocket-vs-coffers ratio: >1 means more skimmed than invested in town
             float skimToCoffersRatio = meanTotalCoffers > 0f ? meanTotalSkim / meanTotalCoffers : 0f;
 
@@ -288,7 +347,7 @@ public static class SimHarness
                 $"{wealthWinPct:F1},{auditPct:F1},{rivalPct:F1}," +
                 $"{meanPeakHeat:F1},{meanFirstHeat75:F1}," +
                 $"{meanFinalSafety:F3},{meanTotalSkim:F1},{meanTotalCoffers:F1}," +
-                $"{skimToCoffersRatio:F3}");
+                $"{skimToCoffersRatio:F3},{meanEventsFired:F1}");
         }
 
         File.WriteAllText(Path.Combine(dir, $"{sweepName}_metrics.csv"), sb.ToString());
@@ -328,6 +387,7 @@ public static class SimHarness
         public EndReason EndReason;
         public float  TotalSkimmed;
         public float  TotalCoffersContribution;
+        public int    TotalEventsFired;
         public List<TelemetryRecord> Telemetry;
     }
 
