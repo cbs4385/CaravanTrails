@@ -267,6 +267,65 @@ public static class SimHarness
         }
         sweeps.Add(upgSweep);
 
+        // §6.2 Legitimacy buffer — does LegitimacyHeatBufferPerCoffersUnit magnitude matter,
+        // and does it change the optimal crime-phase skim fraction?
+        // 3 buffer values × 3 skim fractions = 8 configs (no_buffer only tests 2 skims).
+        var legitSweep = new SweepSpec { Name = "legitimacy_buffer", SeedCount = 20, MaxTicks = 200 };
+
+        foreach (var spec in new[]
+        {
+            // No buffer baseline — two skim points to establish counterfactual
+            new { id = "no_buf_skim10",  buffer = 0.000f, crimePhaseSkimFrac = 0.10f },
+            new { id = "no_buf_skim30",  buffer = 0.000f, crimePhaseSkimFrac = 0.30f },
+            // Current default buffer (0.005) — three skim fractions
+            new { id = "cur_buf_skim05", buffer = 0.005f, crimePhaseSkimFrac = 0.05f },
+            new { id = "cur_buf_skim10", buffer = 0.005f, crimePhaseSkimFrac = 0.10f },
+            new { id = "cur_buf_skim30", buffer = 0.005f, crimePhaseSkimFrac = 0.30f },
+            // Strong buffer (0.015) — three skim fractions
+            new { id = "str_buf_skim05", buffer = 0.015f, crimePhaseSkimFrac = 0.05f },
+            new { id = "str_buf_skim10", buffer = 0.015f, crimePhaseSkimFrac = 0.10f },
+            new { id = "str_buf_skim30", buffer = 0.015f, crimePhaseSkimFrac = 0.30f },
+        })
+        {
+            float bufferVal   = spec.buffer;
+            float crimeSkimFrac = spec.crimePhaseSkimFrac;
+            float legitSetupCost   = new SimConfig().OrganizedCrimeSetupCostPerLevel;
+            float legitSetupNeeded = 2 * legitSetupCost;
+
+            legitSweep.Configs.Add(new ConfigEntry
+            {
+                Id = spec.id,
+                Config = new SimConfig { LegitimacyHeatBufferPerCoffersUnit = bufferVal },
+                CreateStrategy = () =>
+                {
+                    bool inCrimePhase = false;
+                    return state =>
+                    {
+                        if (!inCrimePhase && state.Purse >= legitSetupNeeded)
+                            inCrimePhase = true;
+
+                        int delta = 0;
+                        if (inCrimePhase && state.OrganizedCrimeLevel < 2 && state.Purse >= legitSetupCost)
+                            delta = 1;
+
+                        GameCore.Events.EventOption choice = GameCore.Events.EventOption.None;
+                        if (state.PendingEvent != null)
+                            choice = GameCore.Events.EventOption.OptionA;
+
+                        return new PlayerInput
+                        {
+                            TaxRate                  = 0.20f,
+                            SkimFraction             = inCrimePhase ? crimeSkimFrac : 0.40f,
+                            OrganizedCrimeLevelDelta = delta,
+                            BribeAmount              = inCrimePhase ? 5f : 0f,
+                            EventChoice              = choice,
+                        };
+                    };
+                },
+            });
+        }
+        sweeps.Add(legitSweep);
+
         return sweeps;
     }
 
