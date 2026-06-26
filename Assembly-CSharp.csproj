@@ -74,6 +74,7 @@
     <Compile Include="Assets\Scripts\Unity\Config\SimConfigAsset.cs" />
     <Compile Include="Assets\Scripts\Stats\StatsTracker.cs" />
     <Compile Include="Assets\Scripts\Economy\EconomyManager.cs" />
+    <Compile Include="Assets\Scripts\Unity\Presentation\TradeRouteVisualizer.cs" />
     <Compile Include="Assets\Scripts\Board\TownView.cs" />
     <Compile Include="Assets\Scripts\Data\TownData.cs" />
     <Compile Include="Assets\Scripts\Data\GameConfig.cs" />
@@ -85,8 +86,10 @@
     <Compile Include="Assets\Scripts\Core\GameBootstrapper.cs" />
     <Compile Include="Assets\Scripts\Board\RouteViewProxy.cs" />
     <Compile Include="Assets\Scripts\Crime\CrimeManager.cs" />
+    <Compile Include="Assets\Scripts\Unity\UI\TutorialSystem.cs" />
     <Compile Include="Assets\TutorialInfo\Scripts\Readme.cs" />
     <Compile Include="Assets\Scripts\UI\StatsPanel.cs" />
+    <Compile Include="Assets\Scripts\Unity\Presentation\CharacterIdleAnim.cs" />
     <Compile Include="Assets\Scripts\UI\RoutePanel.cs" />
     <Compile Include="Assets\Scripts\Core\IPurse.cs" />
     <Compile Include="Assets\Scripts\UI\HUDController.cs" />
@@ -94,13 +97,16 @@
     <Compile Include="Assets\Scripts\Trade\TradeSimulator.cs" />
     <Compile Include="Assets\Scripts\Placement\BuildingManager.cs" />
     <Compile Include="Assets\Scripts\Data\UnitDefinition.cs" />
+    <Compile Include="Assets\Scripts\Unity\UI\SoundManager.cs" />
     <Compile Include="Assets\Scripts\Core\GameManager.cs" />
     <Compile Include="Assets\Scripts\Placement\UnitManager.cs" />
     <Compile Include="Assets\Scripts\Data\BuildingDefinition.cs" />
     <Compile Include="Assets\Scripts\UI\TownPanel.cs" />
+    <Compile Include="Assets\Scripts\Unity\Presentation\CaravanManager.cs" />
     <Compile Include="Assets\Scripts\UI\UIManager.cs" />
     <Compile Include="Assets\Scripts\Unity\Presentation\TownView.cs" />
     <Compile Include="Assets\Scripts\Trade\TradeRoute.cs" />
+    <Compile Include="Assets\Scripts\Unity\Presentation\CaravanAgent.cs" />
     <Compile Include="Assets\Scripts\Unity\Harness\SimHarness.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -110,6 +116,7 @@
     <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap.shader" />
     <None Include="Assets\TextMesh Pro\Shaders\TMPro_Mobile.cginc" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF SSD.shader" />
+    <None Include="Assets\Art\WarmGradientSky.shader" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Surface-Mobile.shader" />
     <None Include="Assets\TextMesh Pro\Shaders\SDFFunctions.hlsl" />
     <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Surface.shader" />

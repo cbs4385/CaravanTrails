@@ -1,8 +1,7 @@
 {
   "mcpServers": {
     "unity-mcp": {
-      "command": "C:\\Users\\Christopher\\.unity\\relay\\relay_win.exe",
-      "args": ["--mcp"]
+      "url": "http://127.0.0.1:8080/mcp"
     },
     "blender": {
       "command": "uvx",
