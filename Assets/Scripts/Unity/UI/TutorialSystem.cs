@@ -10,7 +10,7 @@ public class TutorialSystem : MonoBehaviour
 {
     // ── Tip catalogue ─────────────────────────────────────────────────────────
 
-    enum TipId { GameStart, HeatWarning, FirstEvent, CoffersLow, CrimeReady, WinHalfway }
+    enum TipId { GameStart, HeatWarning, FirstEvent, CoffersLow, CrimeReady, WinHalfway, LegitimacyNote }
 
     readonly struct TipData { public readonly TipId Id; public readonly string Body;
         public TipData(TipId id, string body) { Id = id; Body = body; } }
@@ -45,6 +45,12 @@ public class TutorialSystem : MonoBehaviour
             "Excellent progress — you're halfway to your fortune!\n\nKeep your crime network funded " +
             "and respond to events promptly. Victory is within reach. Don't let rival pressure " +
             "catch you off guard."),
+
+        new TipData(TipId.LegitimacyNote,
+            "Every coin that reaches the Coffers speaks well of you!\n\n" +
+            "The Empire sees a diligent official funding the town — and <b>suspicion cools</b>. " +
+            "Lowering your <b>Skim</b> doesn't just fund the town; it actively reduces how fast " +
+            "Heat builds. Watch the green <b>Legit</b> bar on the right."),
     };
 
     // ── Panel geometry ────────────────────────────────────────────────────────
@@ -104,14 +110,15 @@ public class TutorialSystem : MonoBehaviour
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    public void Check(WorldState state, GCEvents.EventType lastEvent)
+    public void Check(WorldState state, GCEvents.EventType lastEvent, float coffersContribLastTick = 0f)
     {
-        TryQueue(TipId.GameStart,   state.Tick == 1);
-        TryQueue(TipId.HeatWarning, state.Heat  > 38f  && state.Tick > 3);
-        TryQueue(TipId.FirstEvent,  lastEvent  != GCEvents.EventType.None);
-        TryQueue(TipId.CoffersLow,  state.Coffers < 18f && state.Tick > 5);
-        TryQueue(TipId.CrimeReady,  state.Purse >= 38f  && state.OrganizedCrimeLevel == 0 && state.Tick > 5);
-        TryQueue(TipId.WinHalfway,  state.Purse >= 1750f);
+        TryQueue(TipId.GameStart,        state.Tick == 1);
+        TryQueue(TipId.HeatWarning,      state.Heat  > 38f  && state.Tick > 3);
+        TryQueue(TipId.FirstEvent,       lastEvent  != GCEvents.EventType.None);
+        TryQueue(TipId.CoffersLow,       state.Coffers < 18f && state.Tick > 5);
+        TryQueue(TipId.CrimeReady,       state.Purse >= 38f  && state.OrganizedCrimeLevel == 0 && state.Tick > 5);
+        TryQueue(TipId.WinHalfway,       state.Purse >= 1750f);
+        TryQueue(TipId.LegitimacyNote,   state.Heat  > 28f  && coffersContribLastTick < 8f && state.Tick > 8);
 
         if (_targetY < 0f && _queue.Count > 0) ShowNext();
     }

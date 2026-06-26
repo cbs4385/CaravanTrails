@@ -33,7 +33,7 @@ public class GameController : MonoBehaviour
 
     Slider _taxSl, _skimSl, _bribeSl, _unorgSl;
     Text   _taxVal, _skimVal, _bribeVal, _unorgVal;
-    Text   _tickTxt, _purseTxt, _coffersTxt, _heatTxt;
+    Text   _tickTxt, _purseTxt, _coffersTxt, _legitTxt, _heatTxt;
     Text   _qualTxt, _safetyTxt, _repTxt, _orgLvTxt, _statusTxt;
     Text   _autoLbl;
     Text   _collUpgTxt, _heatUpgTxt, _connUpgTxt, _townUpgTxt, _routeUpgTxt;
@@ -190,10 +190,19 @@ public class GameController : MonoBehaviour
 
     void Refresh()
     {
-        var s = _sim.State;
+        var s   = _sim.State;
+        var cfg = _sim.Config;
+        var tele = _sim.Telemetry;
+
         _tickTxt.text    = $"Tick  <b>{s.Tick}</b>";
         _purseTxt.text   = $"<color=#907050>Purse</color>    <b>§{s.Purse:N0}</b>";
         _coffersTxt.text = $"<color=#907050>Coffers</color>  <b>§{s.Coffers:N0}</b>";
+
+        float lastContrib = tele.Count > 0 ? tele[tele.Count - 1].CoffersContribution : 0f;
+        float legitBuffer = lastContrib * cfg.LegitimacyHeatBufferPerCoffersUnit;
+        float legitNorm   = Mathf.Clamp01(lastContrib / (cfg.TributePerTick * 5f));
+        _legitTxt.text = $"<color=#3a7a3a>Legit</color>    {Bar(legitNorm)}  −{legitBuffer:F2} heat";
+
         _qualTxt.text    = $"<color=#907050>Town</color>     {Bar(s.TownQuality)}  {s.TownQuality:P0}";
         _safetyTxt.text  = $"<color=#907050>Safety</color>   {Bar(s.Safety)}  {s.Safety:P0}";
         _repTxt.text     = $"<color=#907050>Rep</color>      {Bar(s.Reputation)}  {s.Reputation:P0}";
@@ -201,7 +210,7 @@ public class GameController : MonoBehaviour
         _heatTxt.color = HeatColor(s.Heat);
         _orgLvTxt.text   = $"<color=#907050>Org Crime</color>  <b>Lv {s.OrganizedCrimeLevel}</b>";
 
-        var cfg = _sim.Config;
+
         float collCost  = cfg.UpgradeCollectionCostBase
             * Mathf.Pow(cfg.UpgradeCollectionCostScalePerLevel, s.CollectionUpgradeLevel);
         float heatCost  = cfg.UpgradeHeatDecayCostBase
@@ -236,9 +245,8 @@ public class GameController : MonoBehaviour
 
         if (!s.IsGameOver)
         {
-            var tele     = _sim.Telemetry;
-            var lastEvt  = tele.Count > 0 ? tele[tele.Count - 1].EventFired : GameCore.Events.EventType.None;  // GameCore.Events.EventType, not UnityEngine.EventType
-            _tutorial?.Check(s, lastEvt);
+            var lastEvt = tele.Count > 0 ? tele[tele.Count - 1].EventFired : GameCore.Events.EventType.None;
+            _tutorial?.Check(s, lastEvt, lastContrib);
         }
     }
 
@@ -418,6 +426,8 @@ public class GameController : MonoBehaviour
         _purseTxt.color = new Color(1.00f, 0.88f, 0.55f);
         _coffersTxt = StatLine(rp, rx, tw, ref ry);
         _coffersTxt.color = new Color(1.00f, 0.88f, 0.55f);
+        _legitTxt   = StatLine(rp, rx, tw, ref ry);
+        _legitTxt.color = new Color(0.62f, 0.92f, 0.62f);
 
         ry -= 6f;
         BgImg(MkRT(rp, "Div1", rx, ry, tw - 24f, 1f), new Color(0.42f, 0.30f, 0.12f));
