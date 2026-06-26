@@ -19,7 +19,7 @@ namespace GameCore.Sim
         public float AttractivenessWeightReputation = 0.10f;
 
         // §4.2 Taxation & skim — heat accrual from the gap
-        public float HeatAccrualPerSkimUnit = 0.3f;
+        public float HeatAccrualPerSkimUnit = 0.15f;
 
         // §4.3 Coffers — town quality & tribute
         public float TownQualityDecayRatePerTick = 0.02f;
@@ -41,7 +41,7 @@ namespace GameCore.Sim
         public float OrganizedCrimeYieldPerLevel = 30f;
         public float OrganizedCrimeHeatPerLevel = 0.54f;    // per tick, per level
         public float OrganizedCrimeRivalPressurePerLevel = 0.08f;
-        public float OrganizedCrimeBetrayalOddsPerLevel = 0.003f;  // per tick per level
+        public float OrganizedCrimeBetrayalOddsPerLevel = 0.0015f;  // per tick per level
         public float SafetyPenaltyPerOrganizedLevel = 0.03f;
         public float SafetyFullFundingThreshold = 20f;
         public float SafetyGainRatePerTick = 0.03f;
@@ -84,7 +84,7 @@ namespace GameCore.Sim
         public bool EnableAuditFail = true;
         public bool EnableBankruptcyFail = true;
         public bool EnableWealthWin = true;
-        public float WealthWinThreshold = 1900f;
+        public float WealthWinThreshold = 3500f;
         public float TownCollapseQualityThreshold = 0.05f;
 
         // §3 Events — all toggleable; probabilities fire at most once per tick
