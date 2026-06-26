@@ -64,8 +64,12 @@ public class GameController : MonoBehaviour
 
     // ── Audio ─────────────────────────────────────────────────────────────────
 
-    SoundManager _sfx;
-    bool         _gameOverSoundPlayed;
+    SoundManager   _sfx;
+    bool           _gameOverSoundPlayed;
+
+    // ── Tutorial ──────────────────────────────────────────────────────────────
+
+    TutorialSystem _tutorial;
 
     // ── Town view ─────────────────────────────────────────────────────────────
 
@@ -114,6 +118,7 @@ public class GameController : MonoBehaviour
         NewGame(); BuildUI(); Refresh();
         _sfx = gameObject.AddComponent<SoundManager>();
         _sfx.PlayAmbient();
+        _tutorial = gameObject.AddComponent<TutorialSystem>();
     }
 
     void OnDestroy() { if (Instance == this) Instance = null; }
@@ -154,6 +159,7 @@ public class GameController : MonoBehaviour
         _gameOverPanel?.SetActive(false);
         _eventPanel?.SetActive(false);
         _townView?.ResetVisuals();
+        _tutorial?.ResetForNewGame();
     }
 
     void DoTick()
@@ -227,6 +233,13 @@ public class GameController : MonoBehaviour
         _routeViz?.Refresh(s);
         RefreshWorldMap();
         RefreshRankings();
+
+        if (!s.IsGameOver)
+        {
+            var tele     = _sim.Telemetry;
+            var lastEvt  = tele.Count > 0 ? tele[tele.Count - 1].EventFired : GameCore.Events.EventType.None;  // GameCore.Events.EventType, not UnityEngine.EventType
+            _tutorial?.Check(s, lastEvt);
+        }
     }
 
     void ToggleAuto()
