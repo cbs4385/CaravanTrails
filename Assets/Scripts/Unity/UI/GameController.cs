@@ -2,6 +2,8 @@ using System;
 using GameCore.Events;
 using GameCore.Sim;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 // §8.1 Phase 2: minimal interactive shell — function first, no art.
@@ -34,7 +36,17 @@ public class GameController : MonoBehaviour
     Text   _tickTxt, _purseTxt, _coffersTxt, _heatTxt;
     Text   _qualTxt, _safetyTxt, _repTxt, _orgLvTxt, _statusTxt;
     Text   _autoLbl;
-    Text   _collUpgTxt, _heatUpgTxt;
+    Text   _collUpgTxt, _heatUpgTxt, _connUpgTxt, _townUpgTxt, _routeUpgTxt;
+
+    // ── World map ─────────────────────────────────────────────────────────────
+    GameObject _worldMapPanel;
+    Image[]    _routeLineImgs;
+    Text[]     _townQualTxts;
+
+    // ── Rankings ──────────────────────────────────────────────────────────────
+    GameObject _rankingsPanel;
+    RawImage   _rankingsGraph;
+    Text       _rankStatsTxt;
 
     // ── Title screen ──────────────────────────────────────────────────────────
 
@@ -61,16 +73,59 @@ public class GameController : MonoBehaviour
     TradeRouteVisualizer _routeViz;
     CaravanManager       _caravanMgr;
 
+    // ── Programmatic API (§8.9) ───────────────────────────────────────────────
+
+    public static GameController Instance { get; private set; }
+
+    // Sliders
+    public void API_SetTaxRate(float v)         { _taxSl.value  = Mathf.Clamp(v, _taxSl.minValue,   _taxSl.maxValue); }
+    public void API_SetSkimFraction(float v)    { _skimSl.value = Mathf.Clamp(v, _skimSl.minValue,  _skimSl.maxValue); }
+    public void API_SetBribeAmount(float v)     { _bribeSl.value= Mathf.Clamp(v, _bribeSl.minValue, _bribeSl.maxValue); }
+    public void API_SetUnorgCrime(float v)      { _unorgSl.value= Mathf.Clamp(v, _unorgSl.minValue, _unorgSl.maxValue); }
+    public void API_SetOrgDelta(int d)          { _pendingOrgDelta = d; }
+
+    // Buttons
+    public void API_Tick()                      { DoTick(); }
+    public void API_ToggleAuto()                { ToggleAuto(); }
+    public void API_NewGame()                   { NewGame(); Refresh(); }
+    public void API_Begin()                     { _titlePanel?.SetActive(false); }
+    public void API_QueueUpgrade(UpgradePurchase up)     { _pendingUpgrade = up; Refresh(); }
+    public void API_BuyCollection()   { API_QueueUpgrade(UpgradePurchase.Collection); }
+    public void API_BuyHeatDecay()    { API_QueueUpgrade(UpgradePurchase.HeatDecay); }
+    public void API_BuyConnections()  { API_QueueUpgrade(UpgradePurchase.Connections); }
+    public void API_BuyTownInvest()   { API_QueueUpgrade(UpgradePurchase.TownInvestment); }
+    public void API_BuyRoute()        { API_QueueUpgrade(UpgradePurchase.RouteImprovement); }
+    public void API_ChooseEvent(EventOption opt){ _pendingEventChoice = opt; _eventPanel?.SetActive(false); }
+
+    // State reads
+    public WorldState  API_GetState()           => _sim?.State;
+    public SimConfig   API_GetConfig()          => _sim?.Config;
+    public float       API_GetTaxRate()         => _taxSl != null ? _taxSl.value : 0f;
+    public float       API_GetSkimFraction()    => _skimSl != null ? _skimSl.value : 0f;
+    public bool        API_IsAutoTick()         => _autoTick;
+    public bool        API_IsTitleVisible()     => _titlePanel != null && _titlePanel.activeSelf;
+    public bool        API_IsEventPending()     => _eventPanel != null && _eventPanel.activeSelf;
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-    void Awake()  { NewGame(); BuildUI(); Refresh(); _sfx = gameObject.AddComponent<SoundManager>(); }
+    void Awake()
+    {
+        Instance = this;
+        NewGame(); BuildUI(); Refresh();
+        _sfx = gameObject.AddComponent<SoundManager>();
+    }
+
+    void OnDestroy() { if (Instance == this) Instance = null; }
 
     void Start()
     {
-        _townView   = FindObjectOfType<TownPresenter>();
-        _routeViz   = FindObjectOfType<TradeRouteVisualizer>();
-        _caravanMgr = FindObjectOfType<CaravanManager>();
+        _townView   = FindAnyObjectByType<TownPresenter>();
+        _routeViz   = FindAnyObjectByType<TradeRouteVisualizer>();
+        _caravanMgr = FindAnyObjectByType<CaravanManager>();
         _townView?.ResetVisuals();
+        // Seed caravan manager with initial attractiveness so traffic is visible before first tick
+        if (_caravanMgr != null)
+            _caravanMgr.OnTick(_sim.Config.BaseTrafficVolume * 0.5f);
     }
 
     void Update()
@@ -140,14 +195,27 @@ public class GameController : MonoBehaviour
         _orgLvTxt.text   = $"<color=#907050>Org Crime</color>  <b>Lv {s.OrganizedCrimeLevel}</b>";
 
         var cfg = _sim.Config;
-        float collCost = cfg.UpgradeCollectionCostBase
+        float collCost  = cfg.UpgradeCollectionCostBase
             * Mathf.Pow(cfg.UpgradeCollectionCostScalePerLevel, s.CollectionUpgradeLevel);
-        float heatCost = cfg.UpgradeHeatDecayCostBase
+        float heatCost  = cfg.UpgradeHeatDecayCostBase
             * Mathf.Pow(cfg.UpgradeHeatDecayCostScalePerLevel, s.HeatDecayUpgradeLevel);
-        _collUpgTxt.text = $"Collection  Lv {s.CollectionUpgradeLevel}  §{collCost:F0}" +
-            (_pendingUpgrade == UpgradePurchase.Collection ? "  [queued]" : "");
-        _heatUpgTxt.text = $"Heat Decay  Lv {s.HeatDecayUpgradeLevel}  §{heatCost:F0}" +
-            (_pendingUpgrade == UpgradePurchase.HeatDecay  ? "  [queued]" : "");
+        float connCost  = cfg.UpgradeConnectionsCostBase
+            * Mathf.Pow(cfg.UpgradeConnectionsCostScalePerLevel, s.ConnectionsLevel);
+        float townCost  = cfg.UpgradeTownInvestmentCostBase
+            * Mathf.Pow(cfg.UpgradeTownInvestmentCostScalePerLevel, s.TownInvestmentLevel);
+        float routeCost = cfg.UpgradeRouteImprovementCostBase
+            * Mathf.Pow(cfg.UpgradeRouteImprovementCostScalePerLevel, s.RouteImprovementLevel);
+
+        _collUpgTxt.text  = $"Collect  Lv {s.CollectionUpgradeLevel}  §{collCost:F0}" +
+            (_pendingUpgrade == UpgradePurchase.Collection    ? " [q]" : "");
+        _heatUpgTxt.text  = $"H.Decay  Lv {s.HeatDecayUpgradeLevel}  §{heatCost:F0}" +
+            (_pendingUpgrade == UpgradePurchase.HeatDecay     ? " [q]" : "");
+        _connUpgTxt.text  = $"Connect  Lv {s.ConnectionsLevel}  §{connCost:F0}" +
+            (_pendingUpgrade == UpgradePurchase.Connections   ? " [q]" : "");
+        _townUpgTxt.text  = $"Town Inv  Lv {s.TownInvestmentLevel}  ¢{townCost:F0}" +
+            (_pendingUpgrade == UpgradePurchase.TownInvestment? " [q]" : "");
+        _routeUpgTxt.text = $"Route Imp  Lv {s.RouteImprovementLevel}  ¢{routeCost:F0}" +
+            (_pendingUpgrade == UpgradePurchase.RouteImprovement ? " [q]" : "");
 
         if (s.IsGameOver)
             ShowGameOverPanel(s);
@@ -156,6 +224,8 @@ public class GameController : MonoBehaviour
 
         _townView?.Refresh(s);
         _routeViz?.Refresh(s);
+        RefreshWorldMap();
+        RefreshRankings();
     }
 
     void ToggleAuto()
@@ -206,6 +276,14 @@ public class GameController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         var root = (RectTransform)cGO.transform;
 
+        // EventSystem is required for UI input — create one if absent
+        if (FindAnyObjectByType<EventSystem>() == null)
+        {
+            var esGO = new GameObject("EventSystem");
+            esGO.AddComponent<EventSystem>();
+            esGO.AddComponent<InputSystemUIInputModule>();
+        }
+
         const float PW = 295f;  // panel width
 
         // Left panel: anchored to left screen edge, full height
@@ -247,8 +325,8 @@ public class GameController : MonoBehaviour
         const float xp = 10f, cw = PW - 20f;
         float y = 670f;
 
-        MkTxt(lp, "─ CONTROLS ─", 13, xp, y, cw, 18f, TextAnchor.MiddleLeft, new Color(1.00f, 0.85f, 0.45f));
-        y -= 24f;
+        MkTxt(lp, "─ CONTROLS ─", 15, xp, y, cw, 20f, TextAnchor.MiddleLeft, new Color(1.00f, 0.85f, 0.45f));
+        y -= 26f;
 
         SliderRow(lp, "Tax Rate",     ref y, xp, cw, 0f, 0.60f, 0.15f, v => _taxVal.text   = $"{v:P0}",  out _taxSl,   out _taxVal);
         SliderRow(lp, "Skim",         ref y, xp, cw, 0f, 1.00f, 0.10f, v => _skimVal.text  = $"{v:P0}",  out _skimSl,  out _skimVal);
@@ -256,27 +334,51 @@ public class GameController : MonoBehaviour
         SliderRow(lp, "Street crime", ref y, xp, cw, 0f, 1.00f, 0.00f, v => _unorgVal.text = $"{v:P0}",  out _unorgSl, out _unorgVal);
 
         y -= 6f;
-        MkTxt(lp, "Org Crime", 13, xp, y, 85f, 26f, TextAnchor.MiddleLeft, new Color(0.85f, 0.74f, 0.52f));
+        MkTxt(lp, "Org Crime", 15, xp, y, 95f, 26f, TextAnchor.MiddleLeft, new Color(0.85f, 0.74f, 0.52f));
         MkBtn(lp, "−", xp + 90f, y, 30f, 26f, () => _pendingOrgDelta--);
         MkBtn(lp, "+", xp + 125f, y, 30f, 26f, () => _pendingOrgDelta++);
         y -= 34f;
 
         y -= 6f;
-        MkTxt(lp, "─ UPGRADES ─", 11, xp, y, cw, 16f, TextAnchor.MiddleLeft, new Color(1.00f, 0.85f, 0.45f));
-        y -= 20f;
+        MkTxt(lp, "─ UPGRADES ─", 14, xp, y, cw, 18f, TextAnchor.MiddleLeft, new Color(1.00f, 0.85f, 0.45f));
+        y -= 22f;
 
-        _collUpgTxt = MkTxt(lp, "Collection  Lv 0  §60", 12, xp, y, cw - 54f, 22f,
-            TextAnchor.MiddleLeft, new Color(0.80f, 0.70f, 0.54f));
+        _collUpgTxt = MkTxt(lp, "Collection  Lv 0  §60", 14, xp, y, cw - 54f, 22f,
+            TextAnchor.MiddleLeft, new Color(0.85f, 0.76f, 0.58f));
         MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
             () => { _pendingUpgrade = UpgradePurchase.Collection; Refresh(); },
             new Color(0.30f, 0.20f, 0.08f));
         y -= 28f;
 
-        _heatUpgTxt = MkTxt(lp, "Heat Decay  Lv 0  §80", 12, xp, y, cw - 54f, 22f,
-            TextAnchor.MiddleLeft, new Color(0.80f, 0.70f, 0.54f));
+        _heatUpgTxt = MkTxt(lp, "H.Decay  Lv 0  §80", 14, xp, y, cw - 54f, 22f,
+            TextAnchor.MiddleLeft, new Color(0.85f, 0.76f, 0.58f));
         MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
             () => { _pendingUpgrade = UpgradePurchase.HeatDecay; Refresh(); },
             new Color(0.30f, 0.20f, 0.08f));
+        y -= 28f;
+
+        _connUpgTxt = MkTxt(lp, "Connect  Lv 0  §75", 14, xp, y, cw - 54f, 22f,
+            TextAnchor.MiddleLeft, new Color(0.85f, 0.76f, 0.58f));
+        MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
+            () => { _pendingUpgrade = UpgradePurchase.Connections; Refresh(); },
+            new Color(0.30f, 0.20f, 0.08f));
+        y -= 28f;
+
+        MkTxt(lp, "─ TOWN / ROUTE ─", 12, xp, y, cw, 16f, TextAnchor.MiddleLeft, new Color(0.80f, 0.68f, 0.38f));
+        y -= 20f;
+
+        _townUpgTxt = MkTxt(lp, "Town Inv  Lv 0  §70", 14, xp, y, cw - 54f, 22f,
+            TextAnchor.MiddleLeft, new Color(0.72f, 0.85f, 0.68f));
+        MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
+            () => { _pendingUpgrade = UpgradePurchase.TownInvestment; Refresh(); },
+            new Color(0.14f, 0.32f, 0.12f));
+        y -= 28f;
+
+        _routeUpgTxt = MkTxt(lp, "Route Imp  Lv 0  §100", 14, xp, y, cw - 54f, 22f,
+            TextAnchor.MiddleLeft, new Color(0.72f, 0.85f, 0.68f));
+        MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
+            () => { _pendingUpgrade = UpgradePurchase.RouteImprovement; Refresh(); },
+            new Color(0.14f, 0.32f, 0.12f));
         y -= 28f;
 
         y -= 8f;
@@ -292,8 +394,8 @@ public class GameController : MonoBehaviour
         const float rx = 10f, tw = PW - 20f;
         float ry = 680f;
 
-        MkTxt(rp, "─ STATE ─", 13, rx, ry, tw, 18f, TextAnchor.MiddleLeft, new Color(1.00f, 0.85f, 0.45f));
-        ry -= 24f;
+        MkTxt(rp, "─ STATE ─", 15, rx, ry, tw, 20f, TextAnchor.MiddleLeft, new Color(1.00f, 0.85f, 0.45f));
+        ry -= 26f;
 
         _tickTxt    = MkTxt(rp, "Tick  <b>0</b>", 17, rx, ry, tw, 24f, TextAnchor.MiddleLeft, new Color(1.00f, 0.88f, 0.58f));
         ry -= 34f;
@@ -320,7 +422,16 @@ public class GameController : MonoBehaviour
 
         ry -= 14f;
         _statusTxt = MkTxt(rp, string.Empty, 15, rx, ry, tw, 30f, TextAnchor.MiddleLeft, Color.white);
+        ry -= 38f;
+        MkBtn(rp, "WORLD MAP", rx, ry, tw / 2f - 4f, 28f,
+            () => { _worldMapPanel.SetActive(true); RefreshWorldMap(); },
+            new Color(0.10f, 0.20f, 0.32f));
+        MkBtn(rp, "RANKINGS", rx + tw / 2f + 4f, ry, tw / 2f - 4f, 28f,
+            () => { _rankingsPanel.SetActive(true); RefreshRankings(); },
+            new Color(0.24f, 0.18f, 0.06f));
 
+        BuildWorldMapPanel(root);
+        BuildRankingsPanel(root);
         BuildEventPanel(root);
         BuildGameOverScreen(root);
         BuildTitleScreen(root);   // topmost — covers everything until Begin
@@ -645,7 +756,7 @@ public class GameController : MonoBehaviour
         BgImg(rt, new Color(0.24f, 0.16f, 0.08f));
 
         // Fill: Image.Type.Filled so Slider can drive fillAmount directly
-        var fillRT  = MkRT(rt, "Fill", 0, 0, w, h);
+        var fillRT  = MkRT(rt, "Fill", 0, 0, 0, 0);
         var fillImg = fillRT.gameObject.AddComponent<Image>();
         fillImg.color      = new Color(0.78f, 0.55f, 0.15f);
         fillImg.type       = Image.Type.Filled;
@@ -662,7 +773,7 @@ public class GameController : MonoBehaviour
         handleRT.anchorMax        = new Vector2(0f, 0.5f);
         handleRT.pivot            = new Vector2(0.5f, 0.5f);
         handleRT.anchoredPosition = Vector2.zero;
-        handleRT.sizeDelta        = new Vector2(h * 1.1f, h * 1.1f);
+        handleRT.sizeDelta        = new Vector2(h * 1.1f, h * 0.1f);
         var handleImg = handleRT.gameObject.AddComponent<Image>();
         handleImg.color = new Color(0.96f, 0.82f, 0.50f);
 
@@ -705,20 +816,246 @@ public class GameController : MonoBehaviour
         return inside ? new Color32(255, 255, 255, 255) : new Color32(0, 0, 0, 0);
     }
 
+    // ── World-map data ────────────────────────────────────────────────────────
+
+    static readonly string[] TownNames = { "Westport", "Millhaven", "Eastgate", "Southford", "Crossroads" };
+
+    // Canvas positions in 1280×720 reference space; Crossroads is the player town
+    static readonly Vector2[] TownPos = {
+        new Vector2(330f, 400f),  // Westport  (left of centre, clear of left panel)
+        new Vector2(470f, 530f),  // Millhaven
+        new Vector2(870f, 500f),  // Eastgate
+        new Vector2(730f, 175f),  // Southford
+        new Vector2(620f, 340f),  // Crossroads (player)
+    };
+
+    // Route connections (indices into TownPos); mirrors GameBootstrapper topology
+    static readonly (int a, int b)[] RouteEdges = {
+        (0, 1), (0, 4), (1, 2), (1, 4), (2, 4), (2, 3), (4, 3),
+    };
+    const int PlayerTown = 4;  // Crossroads
+
+    // ── World-map panel ───────────────────────────────────────────────────────
+
+    void BuildWorldMapPanel(RectTransform root)
+    {
+        var go = new GameObject("WorldMap");
+        go.transform.SetParent(root, false);
+        _worldMapPanel = go;
+        var rt = go.AddComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
+        BgImg(rt, new Color(0.04f, 0.02f, 0.01f, 0.96f));
+
+        MkTxt(rt, "SILK ROAD — TRADE NETWORK", 22, 0f, 678f, 1280f, 34f,
+            TextAnchor.MiddleCenter, new Color(1.00f, 0.88f, 0.55f));
+        MkTxt(rt, "Click your town to return.", 11, 0f, 654f, 1280f, 18f,
+            TextAnchor.MiddleCenter, new Color(0.50f, 0.40f, 0.26f));
+        MkBtn(rt, "✕  CLOSE", 20f, 680f, 110f, 26f,
+            () => _worldMapPanel.SetActive(false));
+
+        // Route lines drawn first so town nodes sit on top
+        _routeLineImgs = new Image[RouteEdges.Length];
+        for (int i = 0; i < RouteEdges.Length; i++)
+        {
+            var (a, b) = RouteEdges[i];
+            _routeLineImgs[i] = DrawMapLine(rt, TownPos[a], TownPos[b],
+                4f, new Color(0.40f, 0.28f, 0.14f, 0.70f));
+        }
+
+        // Town nodes
+        const float ND = 52f;
+        _townQualTxts = new Text[TownNames.Length];
+        for (int i = 0; i < TownNames.Length; i++)
+        {
+            bool isPlayer = i == PlayerTown;
+            var  p        = TownPos[i];
+
+            var nodeRT = MkRT(rt, $"Town_{TownNames[i]}", p.x - ND / 2f, p.y - ND / 2f, ND, ND);
+            BgImg(nodeRT, isPlayer
+                ? new Color(0.60f, 0.38f, 0.08f, 0.95f)
+                : new Color(0.20f, 0.13f, 0.07f, 0.90f));
+            MkTxt(nodeRT, TownNames[i].Substring(0, 1), 24, 0f, ND / 2f - 14f, ND, 26f,
+                TextAnchor.UpperCenter, Color.white);
+
+            MkTxt(rt, TownNames[i], 11, p.x - 55f, p.y - ND / 2f - 20f, 110f, 16f,
+                TextAnchor.MiddleCenter,
+                isPlayer ? new Color(1.00f, 0.88f, 0.55f) : new Color(0.68f, 0.58f, 0.42f));
+
+            _townQualTxts[i] = MkTxt(rt, "████████", 9, p.x - 44f, p.y - ND / 2f - 36f, 88f, 14f,
+                TextAnchor.MiddleCenter, new Color(0.40f, 0.80f, 0.40f));
+
+            if (isPlayer)
+            {
+                MkTxt(rt, "← YOUR TOWN", 10, p.x + ND / 2f + 6f, p.y - 8f, 100f, 18f,
+                    TextAnchor.MiddleLeft, new Color(1.00f, 0.85f, 0.45f));
+                var btn = nodeRT.gameObject.AddComponent<Button>();
+                btn.targetGraphic = nodeRT.gameObject.GetComponent<Image>();
+                btn.onClick.AddListener(() => _worldMapPanel.SetActive(false));
+            }
+        }
+
+        go.SetActive(false);
+    }
+
+    static Image DrawMapLine(RectTransform parent, Vector2 from, Vector2 to, float thickness, Color color)
+    {
+        Vector2 diff = to - from;
+        float len = diff.magnitude;
+        float deg = Mathf.Atan2(diff.y, diff.x) * Mathf.Rad2Deg;
+        var go = new GameObject("RouteLine");
+        go.transform.SetParent(parent, false);
+        var rt = go.AddComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = Vector2.zero;
+        rt.pivot            = new Vector2(0f, 0.5f);
+        rt.anchoredPosition = from;
+        rt.sizeDelta        = new Vector2(len, thickness);
+        rt.localRotation    = Quaternion.Euler(0f, 0f, deg);
+        var img = go.AddComponent<Image>();
+        img.color = color;
+        return img;
+    }
+
+    void RefreshWorldMap()
+    {
+        if (_worldMapPanel == null || !_worldMapPanel.activeSelf) return;
+        var s = _sim.State;
+        var t = _sim.Telemetry;
+        float traffic = t.Count > 0 ? t[t.Count - 1].TrafficVolume : _sim.Config.BaseTrafficVolume * 0.5f;
+        float tNorm   = Mathf.Clamp01(traffic / (_sim.Config.BaseTrafficVolume * 1.5f));
+
+        for (int i = 0; i < _routeLineImgs.Length; i++)
+        {
+            var (a, b) = RouteEdges[i];
+            bool playerRoute = a == PlayerTown || b == PlayerTown;
+            float br = playerRoute ? Mathf.Lerp(0.30f, 1.00f, tNorm) : 0.35f;
+            _routeLineImgs[i].color = new Color(0.72f * br, 0.52f * br, 0.26f * br, 0.85f);
+        }
+
+        for (int i = 0; i < _townQualTxts.Length; i++)
+        {
+            float q = i == PlayerTown
+                ? s.TownQuality
+                : 0.55f + Mathf.Sin(i * 2.1f + s.Tick * 0.012f) * 0.14f;
+            int on = Mathf.RoundToInt(Mathf.Clamp01(q) * 8);
+            _townQualTxts[i].text  = new string('█', on) + new string('░', 8 - on);
+            _townQualTxts[i].color = Color.Lerp(
+                new Color(0.85f, 0.32f, 0.18f), new Color(0.32f, 0.85f, 0.38f), q);
+        }
+    }
+
+    // ── Rankings panel ────────────────────────────────────────────────────────
+
+    void BuildRankingsPanel(RectTransform root)
+    {
+        const float CW = 760f, CH = 500f;
+
+        var go = new GameObject("Rankings");
+        go.transform.SetParent(root, false);
+        _rankingsPanel = go;
+        var overlay = go.AddComponent<RectTransform>();
+        overlay.anchorMin = Vector2.zero;
+        overlay.anchorMax = Vector2.one;
+        overlay.offsetMin = overlay.offsetMax = Vector2.zero;
+        BgImg(overlay, new Color(0.04f, 0.02f, 0.01f, 0.92f));
+
+        var cardGO = new GameObject("Card");
+        cardGO.transform.SetParent(overlay, false);
+        var card = cardGO.AddComponent<RectTransform>();
+        card.anchorMin = card.anchorMax = new Vector2(0.5f, 0.5f);
+        card.pivot     = new Vector2(0.5f, 0.5f);
+        card.sizeDelta = new Vector2(CW, CH);
+        card.anchoredPosition = Vector2.zero;
+        BgImg(card, new Color(0.10f, 0.07f, 0.03f, 0.97f));
+
+        MkTxt(card, "THE LEDGER", 22, 0f, CH - 48f, CW, 40f,
+            TextAnchor.MiddleCenter, new Color(1.00f, 0.88f, 0.55f));
+        MkBtn(card, "✕", CW - 38f, CH - 38f, 30f, 30f,
+            () => _rankingsPanel.SetActive(false));
+
+        // Legend
+        MkTxt(card, "■ Purse   ■ Coffers   ■ Heat", 11, 24f, CH - 68f, CW - 48f, 16f,
+            TextAnchor.MiddleRight, new Color(0.68f, 0.62f, 0.40f));
+
+        // Graph background + RawImage on a child (same GO can't hold both Image and RawImage)
+        var graphRT = MkRT(card, "Graph", 24f, 90f, CW - 48f, 250f);
+        BgImg(graphRT, new Color(0.07f, 0.04f, 0.02f));
+        var rawGO = new GameObject("RawGraph");
+        rawGO.transform.SetParent(graphRT, false);
+        var rawRT = rawGO.AddComponent<RectTransform>();
+        rawRT.anchorMin = Vector2.zero;
+        rawRT.anchorMax = Vector2.one;
+        rawRT.offsetMin = rawRT.offsetMax = Vector2.zero;
+        _rankingsGraph = rawGO.AddComponent<RawImage>();
+
+        // Summary text below graph
+        _rankStatsTxt = MkTxt(card, "", 13, 24f, 14f, CW - 48f, 68f,
+            TextAnchor.UpperLeft, new Color(0.85f, 0.78f, 0.60f));
+        _rankStatsTxt.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+        go.SetActive(false);
+    }
+
+    void RefreshRankings()
+    {
+        if (_rankingsPanel == null || !_rankingsPanel.activeSelf) return;
+        var tele = _sim.Telemetry;
+        var s    = _sim.State;
+
+        const int GW = 512, GH = 200;
+        if (_rankingsGraph.texture != null) Destroy(_rankingsGraph.texture);
+        var tex = new Texture2D(GW, GH, TextureFormat.RGBA32, false);
+        var px  = new Color32[GW * GH];
+        var bgC = new Color32(12, 7, 3, 255);
+        for (int k = 0; k < px.Length; k++) px[k] = bgC;
+
+        if (tele.Count > 1)
+        {
+            float peak = 10f;
+            foreach (var r in tele) peak = Mathf.Max(peak, r.Purse, r.Coffers);
+
+            for (int xi = 0; xi < GW; xi++)
+            {
+                int ti = Mathf.Clamp(Mathf.FloorToInt((float)xi / GW * tele.Count), 0, tele.Count - 1);
+                int yP = Mathf.Clamp(Mathf.RoundToInt(tele[ti].Purse    / peak    * (GH - 4)), 0, GH - 1);
+                int yC = Mathf.Clamp(Mathf.RoundToInt(tele[ti].Coffers  / peak    * (GH - 4)), 0, GH - 1);
+                int yH = Mathf.Clamp(Mathf.RoundToInt(tele[ti].Heat     / 100f    * (GH - 4)), 0, GH - 1);
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    int pp = (yP + dy) * GW + xi, cp = (yC + dy) * GW + xi, hp = (yH + dy) * GW + xi;
+                    if (yP + dy >= 0 && yP + dy < GH) px[pp] = new Color32(210, 168,  62, 255);
+                    if (yC + dy >= 0 && yC + dy < GH) px[cp] = new Color32( 78, 192,  92, 255);
+                    if (yH + dy >= 0 && yH + dy < GH) px[hp] = new Color32(215,  58,  42, 255);
+                }
+            }
+        }
+
+        tex.SetPixels32(px);
+        tex.Apply();
+        _rankingsGraph.texture = tex;
+
+        float maxP = 0f, maxC = 0f;
+        foreach (var r in tele) { maxP = Mathf.Max(maxP, r.Purse); maxC = Mathf.Max(maxC, r.Coffers); }
+        _rankStatsTxt.text =
+            $"Ticks: {s.Tick}   Peak Purse: §{maxP:N0}   Peak Coffers: §{maxC:N0}\n" +
+            $"Town {Bar(s.TownQuality)}   Safety {Bar(s.Safety)}   Rep {Bar(s.Reputation)}";
+    }
+
     void SliderRow(RectTransform parent, string label, ref float y,
         float x, float panelW, float min, float max, float val,
         Action<float> onChange, out Slider slider, out Text valueText)
     {
-        const float lh = 18f, sh = 20f, valW = 60f;
+        const float lh = 24f, sh = 20f, valW = 60f;
         string initTxt = max > 1f ? $"§{val:F0}" : $"{val:P0}";
-        MkTxt(parent, label, 13, x, y, panelW - valW, lh,
-            TextAnchor.MiddleLeft, new Color(0.80f, 0.70f, 0.54f));
-        valueText = MkTxt(parent, initTxt, 13, x + panelW - valW, y, valW, lh,
+        MkTxt(parent, label, 16, x, y, panelW - valW, lh,
+            TextAnchor.MiddleLeft, new Color(0.85f, 0.76f, 0.58f));
+        valueText = MkTxt(parent, initTxt, 16, x + panelW - valW, y, valW, lh,
             TextAnchor.MiddleRight, Color.white);
         y -= lh + 2f;
 
         slider = MkSlider(parent, x, y, panelW, sh, min, max, val);
         slider.onValueChanged.AddListener(v => onChange(v));
-        y -= sh + 10f;
+        y -= sh + 4f;
     }
 }

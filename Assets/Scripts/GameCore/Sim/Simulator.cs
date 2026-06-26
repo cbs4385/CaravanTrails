@@ -56,8 +56,9 @@ namespace GameCore.Sim
             // 0. Resolve pending event from previous tick (None choice = auto-dismiss)
             _eventModel.ResolveEvent(s, input.EventChoice, Config);
 
-            // 1. Route attractiveness & traffic
-            ctx.RouteAttractiveness = TrafficModel.ComputeAttractiveness(s, input.TaxRate, Config);
+            // 1. Route attractiveness & traffic (RouteImprovement adds flat attractiveness bonus)
+            ctx.RouteAttractiveness = TrafficModel.ComputeAttractiveness(s, input.TaxRate, Config)
+                + s.RouteImprovementLevel * Config.UpgradeRouteImprovementAttractivenessPerLevel;
             ctx.TrafficVolume = _caravanSource.GetTrafficVolume(ctx.RouteAttractiveness, Config, _rng);
 
             // 2. Official revenue & skim (§4.2)
@@ -100,9 +101,11 @@ namespace GameCore.Sim
                 // else: insufficient funds; silently skip (host should validate before calling)
             }
 
-            // 6. Tribute & town quality (§4.3)
+            // 6. Tribute & town quality (§4.3; TownInvestment adds flat quality per tick)
             CoffersModel.ApplyTribute(ref s.Coffers, ref s.Heat, Config);
             s.TownQuality = CoffersModel.UpdateTownQuality(s.TownQuality, s.Coffers, Config);
+            s.TownQuality = Clamp01(s.TownQuality
+                + s.TownInvestmentLevel * Config.UpgradeTownInvestmentQualityBonusPerLevel);
 
             // 7. Safety — coffers-funded recovery, then organized crime penalty (§4.4)
             s.Safety = CoffersModel.UpdateSafety(s.Safety, s.Coffers, Config);
@@ -116,8 +119,9 @@ namespace GameCore.Sim
                                    - predation;
             s.Reputation = Lerp(s.Reputation, Clamp01(targetReputation), Config.ReputationLagFactor);
 
-            // 9. Heat accrual (§4.5)
-            float heatAccrual = _heatModel.ComputeAccrual(s, input, ctx, Config);
+            // 9. Heat accrual (§4.5; Connections reduces accrual by 10% per level)
+            float heatAccrual = _heatModel.ComputeAccrual(s, input, ctx, Config)
+                * Math.Max(0f, 1f - s.ConnectionsLevel * Config.UpgradeConnectionsHeatReductionPerLevel);
             float heatDecay = _heatModel.ComputeNaturalDecay(s, Config);
 
             // Bribe: pay what the player can afford, get proportional heat reduction
@@ -153,6 +157,36 @@ namespace GameCore.Sim
                 {
                     s.Purse -= cost;
                     s.HeatDecayUpgradeLevel++;
+                }
+            }
+            else if (input.Upgrade == UpgradePurchase.Connections)
+            {
+                float cost = Config.UpgradeConnectionsCostBase
+                    * (float)Math.Pow(Config.UpgradeConnectionsCostScalePerLevel, s.ConnectionsLevel);
+                if (s.Purse >= cost)
+                {
+                    s.Purse -= cost;
+                    s.ConnectionsLevel++;
+                }
+            }
+            else if (input.Upgrade == UpgradePurchase.TownInvestment)
+            {
+                float cost = Config.UpgradeTownInvestmentCostBase
+                    * (float)Math.Pow(Config.UpgradeTownInvestmentCostScalePerLevel, s.TownInvestmentLevel);
+                if (s.Coffers >= cost)
+                {
+                    s.Coffers -= cost;
+                    s.TownInvestmentLevel++;
+                }
+            }
+            else if (input.Upgrade == UpgradePurchase.RouteImprovement)
+            {
+                float cost = Config.UpgradeRouteImprovementCostBase
+                    * (float)Math.Pow(Config.UpgradeRouteImprovementCostScalePerLevel, s.RouteImprovementLevel);
+                if (s.Coffers >= cost)
+                {
+                    s.Coffers -= cost;
+                    s.RouteImprovementLevel++;
                 }
             }
 

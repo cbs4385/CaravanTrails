@@ -54,13 +54,24 @@ namespace GameCore.Sim
         public float AuditChancePerHeatPointAboveThreshold = 0.004f;
         public float AuditFineMultiplier = 2f;                      // fine = purse * multiplier
 
-        // §4.6 Upgrades
+        // §4.6 Upgrades — personal (cost from purse)
         public float UpgradeCollectionCostBase = 60f;
         public float UpgradeCollectionCostScalePerLevel = 1.5f;
         public float UpgradeCollectionSkimBonusPerLevel = 0.08f;    // +8% skim efficiency per level
         public float UpgradeHeatDecayCostBase = 80f;
         public float UpgradeHeatDecayCostScalePerLevel = 1.6f;
         public float UpgradeHeatDecayBonusPerLevel = 0.015f;        // +1.5% extra heat decay per level
+        public float UpgradeConnectionsCostBase = 75f;
+        public float UpgradeConnectionsCostScalePerLevel = 1.5f;
+        public float UpgradeConnectionsHeatReductionPerLevel = 0.10f; // -10% heat accrual per level
+
+        // §4.6 Upgrades — town (cost from coffers)
+        public float UpgradeTownInvestmentCostBase = 70f;
+        public float UpgradeTownInvestmentCostScalePerLevel = 1.4f;
+        public float UpgradeTownInvestmentQualityBonusPerLevel = 0.010f; // +1% TownQuality per tick per level
+        public float UpgradeRouteImprovementCostBase = 100f;
+        public float UpgradeRouteImprovementCostScalePerLevel = 1.6f;
+        public float UpgradeRouteImprovementAttractivenessPerLevel = 0.08f; // +0.08 flat attractiveness per level
 
         // §4.1 Reputation — lagged merchant perception
         public float ReputationTownWeight = 0.4f;

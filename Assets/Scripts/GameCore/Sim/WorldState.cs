@@ -25,6 +25,9 @@ namespace GameCore.Sim
         public int OrganizedCrimeLevel;
         public int CollectionUpgradeLevel;
         public int HeatDecayUpgradeLevel;
+        public int TownInvestmentLevel;
+        public int RouteImprovementLevel;
+        public int ConnectionsLevel;
 
         // End state
         public bool IsGameOver;
@@ -47,6 +50,9 @@ namespace GameCore.Sim
             OrganizedCrimeLevel = 0,
             CollectionUpgradeLevel = 0,
             HeatDecayUpgradeLevel = 0,
+            TownInvestmentLevel = 0,
+            RouteImprovementLevel = 0,
+            ConnectionsLevel = 0,
             IsGameOver = false,
             EndReason = EndReason.None,
         };

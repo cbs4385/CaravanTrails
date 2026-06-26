@@ -38,7 +38,10 @@ namespace GameCore.Sim
     public enum UpgradePurchase
     {
         None,
-        Collection,
-        HeatDecay,
+        Collection,       // personal: skim efficiency
+        HeatDecay,        // personal: faster heat decay
+        TownInvestment,   // town:     improve town quality recovery
+        RouteImprovement, // route:    boost trade attractiveness
+        Connections,      // personal: reduce heat accrual via favours
     }
 }
