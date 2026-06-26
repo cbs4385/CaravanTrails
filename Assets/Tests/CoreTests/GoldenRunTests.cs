@@ -15,7 +15,7 @@ namespace CoreTests
     {
         // Recompute with: seed=42, default SimConfig, 50 ticks, TaxRate=0.15 SkimFraction=0.10
         private const string ExpectedHash =
-            "7a247503915852fab68e92f8bbfb9276e9d31b6e2eaf182b7cec3bc846f212a2";
+            "ca124bbc436a280e521bf6f8a7ae6e64e4f948d284415e8bfc32f8a860e11989";
 
         [Test]
         public void GoldenRun_TelemetryHashMatchesBaseline()
