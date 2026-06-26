@@ -113,6 +113,7 @@ public class GameController : MonoBehaviour
         Instance = this;
         NewGame(); BuildUI(); Refresh();
         _sfx = gameObject.AddComponent<SoundManager>();
+        _sfx.PlayAmbient();
     }
 
     void OnDestroy() { if (Instance == this) Instance = null; }
@@ -347,21 +348,21 @@ public class GameController : MonoBehaviour
             TextAnchor.MiddleLeft, new Color(0.85f, 0.76f, 0.58f));
         MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
             () => { _pendingUpgrade = UpgradePurchase.Collection; Refresh(); },
-            new Color(0.30f, 0.20f, 0.08f));
+            new Color(0.30f, 0.20f, 0.08f), coinSound: true);
         y -= 28f;
 
         _heatUpgTxt = MkTxt(lp, "H.Decay  Lv 0  §80", 14, xp, y, cw - 54f, 22f,
             TextAnchor.MiddleLeft, new Color(0.85f, 0.76f, 0.58f));
         MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
             () => { _pendingUpgrade = UpgradePurchase.HeatDecay; Refresh(); },
-            new Color(0.30f, 0.20f, 0.08f));
+            new Color(0.30f, 0.20f, 0.08f), coinSound: true);
         y -= 28f;
 
         _connUpgTxt = MkTxt(lp, "Connect  Lv 0  §75", 14, xp, y, cw - 54f, 22f,
             TextAnchor.MiddleLeft, new Color(0.85f, 0.76f, 0.58f));
         MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
             () => { _pendingUpgrade = UpgradePurchase.Connections; Refresh(); },
-            new Color(0.30f, 0.20f, 0.08f));
+            new Color(0.30f, 0.20f, 0.08f), coinSound: true);
         y -= 28f;
 
         MkTxt(lp, "─ TOWN / ROUTE ─", 12, xp, y, cw, 16f, TextAnchor.MiddleLeft, new Color(0.80f, 0.68f, 0.38f));
@@ -371,14 +372,14 @@ public class GameController : MonoBehaviour
             TextAnchor.MiddleLeft, new Color(0.72f, 0.85f, 0.68f));
         MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
             () => { _pendingUpgrade = UpgradePurchase.TownInvestment; Refresh(); },
-            new Color(0.14f, 0.32f, 0.12f));
+            new Color(0.14f, 0.32f, 0.12f), coinSound: true);
         y -= 28f;
 
         _routeUpgTxt = MkTxt(lp, "Route Imp  Lv 0  §100", 14, xp, y, cw - 54f, 22f,
             TextAnchor.MiddleLeft, new Color(0.72f, 0.85f, 0.68f));
         MkBtn(lp, "Buy", xp + cw - 48f, y, 44f, 22f,
             () => { _pendingUpgrade = UpgradePurchase.RouteImprovement; Refresh(); },
-            new Color(0.14f, 0.32f, 0.12f));
+            new Color(0.14f, 0.32f, 0.12f), coinSound: true);
         y -= 28f;
 
         y -= 8f;
@@ -497,6 +498,7 @@ public class GameController : MonoBehaviour
         _evBodyTxt.text = evt.BodyText;
         _evOptALbl.text = evt.OptionALabel;
         _evOptBLbl.text = evt.OptionBLabel;
+        _sfx?.PlayEvent();
         _eventPanel.SetActive(true);
         // Pause auto-tick so player must respond before sim advances
         _autoTick = false;
@@ -726,9 +728,9 @@ public class GameController : MonoBehaviour
         return t;
     }
 
-    static Button MkBtn(RectTransform parent, string label,
+    Button MkBtn(RectTransform parent, string label,
         float x, float y, float w, float h,
-        Action onClick, Color? bg = null)
+        Action onClick, Color? bg = null, bool coinSound = false)
     {
         var rt  = MkRT(parent, "Btn", x, y, w, h);
         var img = rt.gameObject.AddComponent<Image>();
@@ -736,7 +738,11 @@ public class GameController : MonoBehaviour
         if (_roundedSprite != null) { img.sprite = _roundedSprite; img.type = Image.Type.Sliced; }
         var btn = rt.gameObject.AddComponent<Button>();
         btn.targetGraphic = img;
-        btn.onClick.AddListener(() => onClick());
+        btn.onClick.AddListener(() =>
+        {
+            if (coinSound) _sfx?.PlayCoin(); else _sfx?.PlayClick();
+            onClick();
+        });
 
         // Label stretched over button
         var ltRT = MkRT(rt, "Label", 0, 0, w, h);
