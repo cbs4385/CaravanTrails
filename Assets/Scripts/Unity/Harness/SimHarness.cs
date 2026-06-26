@@ -188,7 +188,107 @@ public static class SimHarness
         }
         sweeps.Add(eventSweep);
 
+        // §6.5 — Upgrade ROI: are the five upgrades worth buying on the org2+pay_all path?
+        // Baseline = org2+pay_all (known 70% win). Each variant adds one upgrade target.
+        var upgSweep = new SweepSpec { Name = "upgrade_roi", SeedCount = 20, MaxTicks = 200 };
+
+        float upgSetupCost   = new SimConfig().OrganizedCrimeSetupCostPerLevel;
+        float upgSetupNeeded = 2 * upgSetupCost;
+        float coffersBuf     = new SimConfig().TributePerTick * 8f;  // 8-tick tribute safety margin
+
+        foreach (var spec in new[]
+        {
+            new { id = "baseline",       purseTargets = new (UpgradePurchase, int)[0],                               coffersTargets = new (UpgradePurchase, int)[0]                               },
+            new { id = "collection_l2",  purseTargets = new[] { (UpgradePurchase.Collection, 2) },                   coffersTargets = new (UpgradePurchase, int)[0]                               },
+            new { id = "heat_decay_l1",  purseTargets = new[] { (UpgradePurchase.HeatDecay, 1) },                    coffersTargets = new (UpgradePurchase, int)[0]                               },
+            new { id = "connections_l1", purseTargets = new[] { (UpgradePurchase.Connections, 1) },                  coffersTargets = new (UpgradePurchase, int)[0]                               },
+            new { id = "town_invest_l1", purseTargets = new (UpgradePurchase, int)[0],                               coffersTargets = new[] { (UpgradePurchase.TownInvestment, 1) }              },
+            new { id = "route_impr_l1",  purseTargets = new (UpgradePurchase, int)[0],                               coffersTargets = new[] { (UpgradePurchase.RouteImprovement, 1) }            },
+            new { id = "all_l1",         purseTargets = new[] { (UpgradePurchase.Collection, 1), (UpgradePurchase.HeatDecay, 1), (UpgradePurchase.Connections, 1) },
+                                         coffersTargets = new[] { (UpgradePurchase.TownInvestment, 1), (UpgradePurchase.RouteImprovement, 1) }                                                   },
+        })
+        {
+            var pt = spec.purseTargets;
+            var ct = spec.coffersTargets;
+            upgSweep.Configs.Add(new ConfigEntry
+            {
+                Id = spec.id,
+                Config = new SimConfig(),
+                CreateStrategy = () =>
+                {
+                    bool inCrimePhase = false;
+                    return state =>
+                    {
+                        if (!inCrimePhase && state.Purse >= upgSetupNeeded) inCrimePhase = true;
+
+                        int delta = 0;
+                        if (inCrimePhase && state.OrganizedCrimeLevel < 2 && state.Purse >= upgSetupCost)
+                            delta = 1;
+
+                        GameCore.Events.EventOption choice = GameCore.Events.EventOption.None;
+                        if (state.PendingEvent != null) choice = GameCore.Events.EventOption.OptionA;
+
+                        // Buy first affordable purse upgrade still below its level cap
+                        UpgradePurchase upgrade = UpgradePurchase.None;
+                        if (inCrimePhase)
+                        {
+                            foreach (var tup in pt)
+                            {
+                                int cur = UpgradeLevel(state, tup.Item1);
+                                if (cur >= tup.Item2) continue;
+                                float cost = UpgradeCost(tup.Item1, cur);
+                                if (state.Purse >= cost + upgSetupCost) { upgrade = tup.Item1; break; }
+                            }
+                        }
+                        // Coffers upgrades: buy whenever coffers buffer allows (any phase)
+                        if (upgrade == UpgradePurchase.None)
+                        {
+                            foreach (var tup in ct)
+                            {
+                                int cur = UpgradeLevel(state, tup.Item1);
+                                if (cur >= tup.Item2) continue;
+                                float cost = UpgradeCost(tup.Item1, cur);
+                                if (state.Coffers >= cost + coffersBuf) { upgrade = tup.Item1; break; }
+                            }
+                        }
+
+                        return new PlayerInput
+                        {
+                            TaxRate                  = 0.20f,
+                            SkimFraction             = inCrimePhase ? 0.10f : 0.40f,
+                            OrganizedCrimeLevelDelta = delta,
+                            BribeAmount              = inCrimePhase ? 5f : 0f,
+                            EventChoice              = choice,
+                            Upgrade                  = upgrade,
+                        };
+                    };
+                },
+            });
+        }
+        sweeps.Add(upgSweep);
+
         return sweeps;
+    }
+
+    static int UpgradeLevel(WorldState s, UpgradePurchase upg)
+    {
+        if (upg == UpgradePurchase.Collection)       return s.CollectionUpgradeLevel;
+        if (upg == UpgradePurchase.HeatDecay)        return s.HeatDecayUpgradeLevel;
+        if (upg == UpgradePurchase.Connections)      return s.ConnectionsLevel;
+        if (upg == UpgradePurchase.TownInvestment)   return s.TownInvestmentLevel;
+        if (upg == UpgradePurchase.RouteImprovement) return s.RouteImprovementLevel;
+        return 0;
+    }
+
+    static float UpgradeCost(UpgradePurchase upg, int currentLevel)
+    {
+        var cfg = new SimConfig();
+        if (upg == UpgradePurchase.Collection)       return cfg.UpgradeCollectionCostBase       * Mathf.Pow(cfg.UpgradeCollectionCostScalePerLevel,       currentLevel);
+        if (upg == UpgradePurchase.HeatDecay)        return cfg.UpgradeHeatDecayCostBase        * Mathf.Pow(cfg.UpgradeHeatDecayCostScalePerLevel,        currentLevel);
+        if (upg == UpgradePurchase.Connections)      return cfg.UpgradeConnectionsCostBase      * Mathf.Pow(cfg.UpgradeConnectionsCostScalePerLevel,      currentLevel);
+        if (upg == UpgradePurchase.TownInvestment)   return cfg.UpgradeTownInvestmentCostBase   * Mathf.Pow(cfg.UpgradeTownInvestmentCostScalePerLevel,   currentLevel);
+        if (upg == UpgradePurchase.RouteImprovement) return cfg.UpgradeRouteImprovementCostBase * Mathf.Pow(cfg.UpgradeRouteImprovementCostScalePerLevel, currentLevel);
+        return float.MaxValue;
     }
 
     // ── Execution engine ─────────────────────────────────────────────────────
