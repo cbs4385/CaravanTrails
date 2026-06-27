@@ -8,7 +8,7 @@ public class SoundManager : MonoBehaviour
 
     AudioSource _src;
     AudioSource _ambSrc;
-    AudioClip   _tick, _win, _lose, _click, _coin, _evt;
+    AudioClip   _tick, _win, _lose, _click, _coin, _evt, _evtTrade, _evtDiverted;
 
     void Awake()
     {
@@ -20,12 +20,14 @@ public class SoundManager : MonoBehaviour
         _ambSrc.loop   = true;
         _ambSrc.volume = 0.18f;
 
-        _tick  = GenTick();
-        _win   = GenWin();
-        _lose  = GenLose();
-        _click = GenClick();
-        _coin  = GenCoin();
-        _evt   = GenEvent();
+        _tick       = GenTick();
+        _win        = GenWin();
+        _lose       = GenLose();
+        _click      = GenClick();
+        _coin       = GenCoin();
+        _evt        = GenEvent();
+        _evtTrade   = GenEventTrade();
+        _evtDiverted= GenEventDiverted();
         _ambSrc.clip = GenAmbient();
     }
 
@@ -34,7 +36,9 @@ public class SoundManager : MonoBehaviour
     public void PlayLose()    => _src.PlayOneShot(_lose,  0.65f);
     public void PlayClick()   => _src.PlayOneShot(_click, 0.40f);
     public void PlayCoin()    => _src.PlayOneShot(_coin,  0.55f);
-    public void PlayEvent()   => _src.PlayOneShot(_evt,   0.60f);
+    public void PlayEvent()         => _src.PlayOneShot(_evt,         0.60f);
+    public void PlayEventTrade()    => _src.PlayOneShot(_evtTrade,    0.55f);
+    public void PlayEventDiverted() => _src.PlayOneShot(_evtDiverted, 0.60f);
     public void PlayAmbient() { if (!_ambSrc.isPlaying) _ambSrc.Play(); }
     public void StopAmbient() => _ambSrc.Stop();
 
@@ -173,6 +177,58 @@ public class SoundManager : MonoBehaviour
         }
         Normalise(b, 0.75f);
         return MakeClip("Event", b);
+    }
+
+    // ── Trade delegation chime: light ascending G5-B5-D6, bright bell timbre ──
+
+    static AudioClip GenEventTrade()
+    {
+        float[] freqs   = { 783.99f, 987.77f, 1174.66f };
+        float   noteDur = 0.10f;
+        int     n       = (int)((freqs.Length * noteDur + 0.14f) * SR);
+        var     b       = new float[n];
+
+        for (int ni = 0; ni < freqs.Length; ni++)
+        {
+            int   start   = (int)(ni * noteDur * SR);
+            int   noteLen = (int)((noteDur + 0.12f) * SR);
+            float freq    = freqs[ni];
+            for (int i = 0; i < noteLen && start + i < n; i++)
+            {
+                float t   = (float)i / SR;
+                float env = (1f - Mathf.Exp(-t * 250f)) * Mathf.Exp(-t * 10f);
+                b[start + i] += env * 0.80f * Mathf.Sin(2 * Mathf.PI * freq * t);
+                b[start + i] += 0.18f * env * Mathf.Exp(-t * 18f)
+                              * Mathf.Sin(2 * Mathf.PI * freq * 2f * t);
+            }
+        }
+        Normalise(b, 0.72f);
+        return MakeClip("EventTrade", b);
+    }
+
+    // ── Diverted caravan thump: heavy low pulse + short descending scrape ──────
+
+    static AudioClip GenEventDiverted()
+    {
+        float dur = 0.50f;
+        int   n   = (int)(dur * SR);
+        var   b   = new float[n];
+        float phase = 0f;
+
+        for (int i = 0; i < n; i++)
+        {
+            float t = (float)i / SR;
+            // Sub-bass thump
+            b[i] += 0.55f * Mathf.Exp(-t * 18f) * Mathf.Sin(2 * Mathf.PI * 90f * t);
+            // Descending mid tone
+            float f2 = Mathf.Lerp(260f, 140f, t / dur);
+            phase += 2 * Mathf.PI * f2 / SR;
+            b[i] += 0.35f * Mathf.Exp(-t * 5f) * Mathf.Sin(phase);
+            // Noise transient at attack
+            b[i] += 0.12f * Mathf.Exp(-t * 60f) * (UnityEngine.Random.value * 2f - 1f);
+        }
+        Normalise(b, 0.80f);
+        return MakeClip("EventDiverted", b);
     }
 
     // ── Looping market ambient: warm C drone with detuned overtones ───────────

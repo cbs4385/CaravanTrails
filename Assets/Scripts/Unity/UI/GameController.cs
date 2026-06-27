@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using GameCore.Events;
 using GameCore.Sim;
 using UnityEngine;
@@ -101,6 +102,10 @@ public class GameController : MonoBehaviour
     public void API_BuyTownInvest()   { API_QueueUpgrade(UpgradePurchase.TownInvestment); }
     public void API_BuyRoute()        { API_QueueUpgrade(UpgradePurchase.RouteImprovement); }
     public void API_ChooseEvent(EventOption opt){ _pendingEventChoice = opt; _eventPanel?.SetActive(false); }
+
+    // Save / load
+    public void API_Save() { SaveGame(); }
+    public void API_Load() { LoadGame(); }
 
     // State reads
     public WorldState  API_GetState()           => _sim?.State;
@@ -282,6 +287,66 @@ public class GameController : MonoBehaviour
         _autoTimer = 0f;
         if (_autoLbl != null)
             _autoLbl.text = _autoTick ? "Auto: ON " : "Auto: OFF";
+    }
+
+    // ── Save / load ───────────────────────────────────────────────────────────
+
+    [Serializable]
+    class SaveBundle
+    {
+        public WorldState State;
+        public float TaxRate;
+        public float SkimFraction;
+        public float BribeAmount;
+        public float UnorgCrime;
+        public int   Seed;
+    }
+
+    static string SavePath => Path.Combine(Application.persistentDataPath, "save.json");
+
+    void SaveGame()
+    {
+        var bundle = new SaveBundle
+        {
+            State        = _sim.State.Clone(),
+            TaxRate      = _taxSl.value,
+            SkimFraction = _skimSl.value,
+            BribeAmount  = _bribeSl.value,
+            UnorgCrime   = _unorgSl.value,
+            Seed         = Seed,
+        };
+        bundle.State.PendingEvent = null;   // don't persist mid-event state
+        File.WriteAllText(SavePath, JsonUtility.ToJson(bundle));
+        _statusTxt.text = "Saved.";
+    }
+
+    void LoadGame()
+    {
+        if (!File.Exists(SavePath)) { _statusTxt.text = "No save found."; return; }
+        var bundle = JsonUtility.FromJson<SaveBundle>(File.ReadAllText(SavePath));
+        // JsonUtility deserializes null class refs as empty objects — sanitize
+        if (bundle.State.PendingEvent != null
+            && bundle.State.PendingEvent.Type == GameCore.Events.EventType.None)
+            bundle.State.PendingEvent = null;
+        Seed = bundle.Seed;
+        var cfg = ConfigAsset != null ? ConfigAsset.Config : new SimConfig();
+        _sim = new Simulator(cfg, Seed, initialState: bundle.State);
+        _pendingOrgDelta     = 0;
+        _pendingUpgrade      = UpgradePurchase.None;
+        _pendingEventChoice  = EventOption.None;
+        _eventsPaid          = 0;
+        _eventsResisted      = 0;
+        _autoTick            = false;
+        _gameOverSoundPlayed = false;
+        if (_autoLbl != null) _autoLbl.text = "Auto: OFF";
+        _gameOverPanel?.SetActive(false);
+        _eventPanel?.SetActive(false);
+        _taxSl.value   = bundle.TaxRate;
+        _skimSl.value  = bundle.SkimFraction;
+        _bribeSl.value = bundle.BribeAmount;
+        _unorgSl.value = bundle.UnorgCrime;
+        Refresh();
+        _statusTxt.text = "Loaded.";
     }
 
     // ── Display helpers ───────────────────────────────────────────────────────
@@ -481,6 +546,11 @@ public class GameController : MonoBehaviour
         MkBtn(rp, "RANKINGS", rx + tw / 2f + 4f, ry, tw / 2f - 4f, 28f,
             () => { _rankingsPanel.SetActive(true); RefreshRankings(); },
             new Color(0.24f, 0.18f, 0.06f));
+        ry -= 34f;
+        MkBtn(rp, "Save", rx, ry, tw / 2f - 4f, 24f, SaveGame,
+            new Color(0.12f, 0.24f, 0.14f));
+        MkBtn(rp, "Load", rx + tw / 2f + 4f, ry, tw / 2f - 4f, 24f, LoadGame,
+            new Color(0.22f, 0.14f, 0.06f));
 
         BuildWorldMapPanel(root);
         BuildRankingsPanel(root);
@@ -549,7 +619,9 @@ public class GameController : MonoBehaviour
         _evBodyTxt.text = evt.BodyText;
         _evOptALbl.text = evt.OptionALabel;
         _evOptBLbl.text = evt.OptionBLabel;
-        _sfx?.PlayEvent();
+        if      (evt.Type == GameCore.Events.EventType.TradeDelegation) _sfx?.PlayEventTrade();
+        else if (evt.Type == GameCore.Events.EventType.DivertedCaravan) _sfx?.PlayEventDiverted();
+        else                                                             _sfx?.PlayEvent();
         _eventPanel.SetActive(true);
         // Pause auto-tick so player must respond before sim advances
         _autoTick = false;
@@ -739,7 +811,20 @@ public class GameController : MonoBehaviour
             }
             case EndReason.AuditArrest:        return "The Imperial auditors have come for you.";
             case EndReason.BankruptcyCollapse: return "The treasury is empty. The town falters.";
-            case EndReason.RivalOverthrow:     return "A rival prefect has seized control of the route.";
+            case EndReason.RivalOverthrow:
+            {
+                string rivalName = "A rival prefect";
+                if (s.RivalTowns != null)
+                {
+                    float maxShare = 0f; int maxIdx = -1;
+                    for (int i = 0; i < s.RivalTowns.Length; i++)
+                        if (s.RivalTowns[i].TrafficShare > maxShare)
+                        { maxShare = s.RivalTowns[i].TrafficShare; maxIdx = i; }
+                    if (maxIdx >= 0 && maxIdx < TownNames.Length)
+                        rivalName = $"The prefect of {TownNames[maxIdx]}";
+                }
+                return $"{rivalName} has seized control of the route.";
+            }
             default:                           return "Your time in office is over.";
         }
     }

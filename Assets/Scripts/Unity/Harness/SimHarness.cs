@@ -487,6 +487,61 @@ public static class SimHarness
         }
         sweeps.Add(incSweep);
 
+        // §rival_events — TradeDelegation + DivertedCaravan combined balance validation.
+        // Both events are active by default. Tests all 4 org strategies with pay_all response.
+        // Goal: confirm combined win rate stays 55–70% across strategies; no event stacking cliff.
+        // 4 configs × 20 seeds × 200 ticks
+        var revSweep = new SweepSpec { Name = "rival_events", SeedCount = 20, MaxTicks = 200 };
+
+        float revSetupCost = new SimConfig().OrganizedCrimeSetupCostPerLevel;
+
+        foreach (var spec in new[]
+        {
+            new { id = "pure_skim",  orgTarget = 0, bribe = 0f },
+            new { id = "org1_pay",   orgTarget = 1, bribe = 3f },
+            new { id = "org2_pay",   orgTarget = 2, bribe = 5f },
+            new { id = "org3_pay",   orgTarget = 3, bribe = 7f },
+        })
+        {
+            int   orgTarget   = spec.orgTarget;
+            float bribeAmt    = spec.bribe;
+            float setupNeeded = orgTarget * revSetupCost;
+
+            revSweep.Configs.Add(new ConfigEntry
+            {
+                Id     = spec.id,
+                Config = new SimConfig(),   // full defaults: rivals on, both events active
+                CreateStrategy = () =>
+                {
+                    bool inCrimePhase = orgTarget == 0;   // pure_skim starts in crime phase
+                    return state =>
+                    {
+                        if (!inCrimePhase && state.Purse >= setupNeeded)
+                            inCrimePhase = true;
+
+                        int delta = 0;
+                        if (inCrimePhase && state.OrganizedCrimeLevel < orgTarget
+                            && state.Purse >= revSetupCost)
+                            delta = 1;
+
+                        GameCore.Events.EventOption choice = GameCore.Events.EventOption.None;
+                        if (state.PendingEvent != null)
+                            choice = GameCore.Events.EventOption.OptionA;
+
+                        return new PlayerInput
+                        {
+                            TaxRate                  = 0.20f,
+                            SkimFraction             = inCrimePhase ? 0.10f : 0.40f,
+                            OrganizedCrimeLevelDelta = delta,
+                            BribeAmount              = inCrimePhase ? bribeAmt : 0f,
+                            EventChoice              = choice,
+                        };
+                    };
+                },
+            });
+        }
+        sweeps.Add(revSweep);
+
         return sweeps;
     }
 
@@ -542,9 +597,11 @@ public static class SimHarness
         int   firstHeat75Tick = -1;
         float totalSkimmed    = 0f;
         float totalCoffers    = 0f;
-        int   totalEvents            = 0;
-        int   totalRivalIncursions   = 0;
-        float totalShare             = 0f;
+        int   totalEvents              = 0;
+        int   totalRivalIncursions     = 0;
+        int   totalTradeDelegations    = 0;
+        int   totalDivertedCaravans    = 0;
+        float totalShare               = 0f;
         float minShare        = 1f;
         float threshold75     = config.AuditThreshold * 0.75f;
 
@@ -560,6 +617,10 @@ public static class SimHarness
                 totalEvents++;
             if (row.EventFired == GameCore.Events.EventType.RivalIncursion)
                 totalRivalIncursions++;
+            if (row.EventFired == GameCore.Events.EventType.TradeDelegation)
+                totalTradeDelegations++;
+            if (row.EventFired == GameCore.Events.EventType.DivertedCaravan)
+                totalDivertedCaravans++;
             totalShare += row.PlayerTrafficShare;
             if (row.PlayerTrafficShare < minShare) minShare = row.PlayerTrafficShare;
         }
@@ -581,8 +642,10 @@ public static class SimHarness
             EndReason              = sim.State.EndReason,
             TotalSkimmed           = totalSkimmed,
             TotalCoffersContribution = totalCoffers,
-            TotalEventsFired           = totalEvents,
-            TotalRivalIncursionsFired  = totalRivalIncursions,
+            TotalEventsFired              = totalEvents,
+            TotalRivalIncursionsFired     = totalRivalIncursions,
+            TotalTradeDelegationsFired    = totalTradeDelegations,
+            TotalDivertedCaravansFired    = totalDivertedCaravans,
             MeanPlayerTrafficShare     = n > 0 ? totalShare / n : 1f,
             MinPlayerTrafficShare  = n > 0 ? minShare   : 1f,
             Telemetry              = new List<TelemetryRecord>(sim.Telemetry),
@@ -612,7 +675,7 @@ public static class SimHarness
             "final_heat,peak_heat,first_heat75_tick," +
             "final_town_quality,final_safety,end_reason," +
             "total_skimmed,total_coffers_contribution,wealth_win," +
-            "rival_incursions_fired," +
+            "rival_incursions_fired,trade_delegations_fired,diverted_caravans_fired," +
             "mean_player_traffic_share,min_player_traffic_share");
 
         foreach (var r in summaries)
@@ -623,7 +686,7 @@ public static class SimHarness
                 $"{r.FinalTownQuality:F3},{r.FinalSafety:F3},{r.EndReason}," +
                 $"{r.TotalSkimmed:F2},{r.TotalCoffersContribution:F2}," +
                 $"{(r.EndReason == EndReason.WealthWin ? 1 : 0)}," +
-                $"{r.TotalRivalIncursionsFired}," +
+                $"{r.TotalRivalIncursionsFired},{r.TotalTradeDelegationsFired},{r.TotalDivertedCaravansFired}," +
                 $"{r.MeanPlayerTrafficShare:F3},{r.MinPlayerTrafficShare:F3}");
 
         File.WriteAllText(Path.Combine(dir, $"{sweepName}_runs.csv"), sb.ToString());
@@ -654,6 +717,7 @@ public static class SimHarness
             "mean_peak_heat,mean_first_heat75_tick," +
             "mean_final_safety,mean_total_skimmed,mean_total_coffers," +
             "mean_skim_to_coffers_ratio,mean_events_fired,mean_rival_incursions," +
+            "mean_trade_delegations,mean_diverted_caravans," +
             "mean_player_traffic_share,min_player_traffic_share");
 
         foreach (var cfgId in order)
@@ -673,9 +737,11 @@ public static class SimHarness
             float meanFinalSafety  = Avg(runs, r => r.FinalSafety);
             float meanTotalSkim    = Avg(runs, r => r.TotalSkimmed);
             float meanTotalCoffers  = Avg(runs, r => r.TotalCoffersContribution);
-            float meanEventsFired        = Avg(runs, r => r.TotalEventsFired);
-            float meanRivalIncursions    = Avg(runs, r => r.TotalRivalIncursionsFired);
-            float meanTrafficShare       = Avg(runs, r => r.MeanPlayerTrafficShare);
+            float meanEventsFired          = Avg(runs, r => r.TotalEventsFired);
+            float meanRivalIncursions      = Avg(runs, r => r.TotalRivalIncursionsFired);
+            float meanTradeDelegations     = Avg(runs, r => r.TotalTradeDelegationsFired);
+            float meanDivertedCaravans     = Avg(runs, r => r.TotalDivertedCaravansFired);
+            float meanTrafficShare         = Avg(runs, r => r.MeanPlayerTrafficShare);
             float minTrafficShare        = Avg(runs, r => r.MinPlayerTrafficShare);
             // pocket-vs-coffers ratio: >1 means more skimmed than invested in town
             float skimToCoffersRatio = meanTotalCoffers > 0f ? meanTotalSkim / meanTotalCoffers : 0f;
@@ -687,6 +753,7 @@ public static class SimHarness
                 $"{meanPeakHeat:F1},{meanFirstHeat75:F1}," +
                 $"{meanFinalSafety:F3},{meanTotalSkim:F1},{meanTotalCoffers:F1}," +
                 $"{skimToCoffersRatio:F3},{meanEventsFired:F1},{meanRivalIncursions:F1}," +
+                $"{meanTradeDelegations:F1},{meanDivertedCaravans:F1}," +
                 $"{meanTrafficShare:F3},{minTrafficShare:F3}");
         }
 
@@ -729,6 +796,8 @@ public static class SimHarness
         public float  TotalCoffersContribution;
         public int    TotalEventsFired;
         public int    TotalRivalIncursionsFired;
+        public int    TotalTradeDelegationsFired;
+        public int    TotalDivertedCaravansFired;
         public float  MeanPlayerTrafficShare;
         public float  MinPlayerTrafficShare;
         public List<TelemetryRecord> Telemetry;
