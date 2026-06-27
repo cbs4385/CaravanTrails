@@ -108,6 +108,9 @@ namespace GameCore.Sim
         // Each percentage point of a rival's traffic share adds this much to incursion chance.
         // A rival at 25% share adds +0.075 → total chance 17.5%; at 35% → +0.105 → 20.5%.
         public float RivalIncursionPressurePerSharePoint   = 0.30f;
+        // Scales total incursion chance at org1; at org2+ the full chance applies.
+        // Default 0.5 gives org1 half the pressure of a fully-grown org2 operation.
+        public float RivalIncursionPressureOrgScale        = 0.50f;
         public float RivalIncursionTributeCost             = 50f;
         public float RivalIncursionRefuseSafetyPenalty     = 0.08f;
         public float MerchantComplaintRepThreshold         = 0.45f;

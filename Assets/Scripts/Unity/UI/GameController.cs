@@ -16,6 +16,11 @@ public class GameController : MonoBehaviour
     public SimConfigAsset ConfigAsset;   // assign in Inspector, or leave null for defaults
     public int Seed;
 
+    // ── Difficulty ────────────────────────────────────────────────────────────
+
+    enum Difficulty { Easy, Normal, Hard }
+    Difficulty _difficulty = Difficulty.Normal;
+
     // ── Sim ──────────────────────────────────────────────────────────────────
 
     Simulator        _sim;
@@ -49,6 +54,8 @@ public class GameController : MonoBehaviour
     GameObject _rankingsPanel;
     RawImage   _rankingsGraph;
     Text       _rankStatsTxt;
+    Text       _highScoresTxt;
+    HighScoreStore _highScores;
 
     // ── Title screen ──────────────────────────────────────────────────────────
 
@@ -106,6 +113,8 @@ public class GameController : MonoBehaviour
     // Save / load
     public void API_Save() { SaveGame(); }
     public void API_Load() { LoadGame(); }
+    // Difficulty (0=Easy, 1=Normal, 2=Hard)
+    public void API_SetDifficulty(int d) { _difficulty = (Difficulty)Mathf.Clamp(d, 0, 2); }
 
     // State reads
     public WorldState  API_GetState()           => _sim?.State;
@@ -121,6 +130,7 @@ public class GameController : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        LoadHighScores();
         NewGame(); BuildUI(); Refresh();
         _sfx = gameObject.AddComponent<SoundManager>();
         _sfx.PlayAmbient();
@@ -151,7 +161,7 @@ public class GameController : MonoBehaviour
 
     void NewGame()
     {
-        var cfg = ConfigAsset != null ? ConfigAsset.Config : new SimConfig();
+        var cfg = BuildDifficultyConfig();
         _sim = new Simulator(cfg, Seed);
         _pendingOrgDelta       = 0;
         _pendingEventChoice    = EventOption.None;
@@ -200,7 +210,10 @@ public class GameController : MonoBehaviour
         var cfg = _sim.Config;
         var tele = _sim.Telemetry;
 
-        _tickTxt.text    = $"Tick  <b>{s.Tick}</b>";
+        string diffTag = _difficulty == Difficulty.Easy ? "  <color=#3aaa5a>[Easy]</color>"
+                       : _difficulty == Difficulty.Hard ? "  <color=#cc4422>[Hard]</color>"
+                       : "";
+        _tickTxt.text    = $"Tick  <b>{s.Tick}</b>{diffTag}";
         _purseTxt.text   = $"<color=#907050>Purse</color>    <b>§{s.Purse:N0}</b>";
         _coffersTxt.text = $"<color=#907050>Coffers</color>  <b>§{s.Coffers:N0}</b>";
 
@@ -287,6 +300,82 @@ public class GameController : MonoBehaviour
         _autoTimer = 0f;
         if (_autoLbl != null)
             _autoLbl.text = _autoTick ? "Auto: ON " : "Auto: OFF";
+    }
+
+    // ── Difficulty config ─────────────────────────────────────────────────────
+
+    SimConfig BuildDifficultyConfig()
+    {
+        var cfg = ConfigAsset != null ? ConfigAsset.Config : new SimConfig();
+        switch (_difficulty)
+        {
+            case Difficulty.Easy:
+                cfg.RivalIncursionChance                = 0.05f;
+                cfg.RivalIncursionPressurePerSharePoint = 0.12f;
+                cfg.RivalIncursionTributeCost           = 30f;
+                cfg.WealthWinThreshold                  = 2500f;
+                cfg.AuditThreshold                      = 88f;
+                cfg.RivalQualityGainRate                = 0.003f;
+                cfg.TributePerTick                      = 4f;
+                cfg.InspectorVisitChance                = 0.03f;
+                break;
+            case Difficulty.Hard:
+                cfg.RivalIncursionChance                = 0.14f;
+                cfg.RivalIncursionPressurePerSharePoint = 0.50f;
+                cfg.WealthWinThreshold                  = 5000f;
+                cfg.AuditThreshold                      = 60f;
+                cfg.RivalQualityGainRate                = 0.012f;
+                cfg.TributePerTick                      = 10f;
+                cfg.MerchantComplaintChance             = 0.18f;
+                cfg.InspectorVisitChance                = 0.08f;
+                break;
+            // Normal: ship defaults — no changes needed
+        }
+        return cfg;
+    }
+
+    void BeginGame(Difficulty d)
+    {
+        _difficulty = d;
+        _titlePanel?.SetActive(false);
+        NewGame();
+        Refresh();
+    }
+
+    // ── High scores ───────────────────────────────────────────────────────────
+
+    [Serializable] class HighScoreEntry
+    {
+        public string EndReason;
+        public float  FinalPurse;
+        public int    FinalTick;
+        public string Difficulty;
+    }
+    [Serializable] class HighScoreStore { public System.Collections.Generic.List<HighScoreEntry> Entries = new System.Collections.Generic.List<HighScoreEntry>(); }
+
+    static string HighScorePath => Path.Combine(Application.persistentDataPath, "highscores.json");
+
+    void LoadHighScores()
+    {
+        _highScores = File.Exists(HighScorePath)
+            ? JsonUtility.FromJson<HighScoreStore>(File.ReadAllText(HighScorePath))
+            : new HighScoreStore();
+    }
+
+    void TryAddHighScore(WorldState s)
+    {
+        if (_highScores == null) _highScores = new HighScoreStore();
+        _highScores.Entries.Add(new HighScoreEntry
+        {
+            EndReason  = s.EndReason.ToString(),
+            FinalPurse = s.Purse,
+            FinalTick  = s.Tick,
+            Difficulty = _difficulty.ToString(),
+        });
+        _highScores.Entries.Sort((a, b) => b.FinalPurse.CompareTo(a.FinalPurse));
+        if (_highScores.Entries.Count > 5) _highScores.Entries.RemoveRange(5, _highScores.Entries.Count - 5);
+        File.WriteAllText(HighScorePath, JsonUtility.ToJson(_highScores));
+        if (_highScoresTxt != null) RefreshRankings();
     }
 
     // ── Save / load ───────────────────────────────────────────────────────────
@@ -675,10 +764,18 @@ public class GameController : MonoBehaviour
         BgImg(MkRT(card, "Rule", 40f, 96f, CW - 80f, 1f),
             new Color(0.38f, 0.26f, 0.10f));
 
-        // BEGIN button
-        MkBtn(card, "BEGIN", (CW - 190f) * 0.5f, 32f, 190f, 50f,
-            () => _titlePanel.SetActive(false),
-            new Color(0.62f, 0.40f, 0.10f));
+        // Difficulty label
+        MkTxt(card, "SELECT DIFFICULTY", 11, 0f, 98f, CW, 14f,
+            TextAnchor.UpperCenter, new Color(0.52f, 0.40f, 0.24f));
+
+        // Difficulty buttons
+        float dbw = (CW - 60f) / 3f;
+        MkBtn(card, "EASY",   10f,               24f, dbw, 46f,
+            () => BeginGame(Difficulty.Easy),   new Color(0.14f, 0.36f, 0.20f));
+        MkBtn(card, "NORMAL", 20f + dbw,         24f, dbw, 46f,
+            () => BeginGame(Difficulty.Normal), new Color(0.62f, 0.40f, 0.10f));
+        MkBtn(card, "HARD",   30f + dbw * 2f,    24f, dbw, 46f,
+            () => BeginGame(Difficulty.Hard),   new Color(0.52f, 0.12f, 0.08f));
     }
 
     // ── Game-over overlay construction ────────────────────────────────────────
@@ -743,6 +840,7 @@ public class GameController : MonoBehaviour
         {
             _gameOverSoundPlayed = true;
             if (win) _sfx?.PlayWin(); else _sfx?.PlayLose();
+            TryAddHighScore(s);
         }
 
         _goIconTxt.text  = win ? "★" : "✕";
@@ -770,7 +868,7 @@ public class GameController : MonoBehaviour
             $"  Trade deal {nTrade}  Diverted {nDiverted}";
 
         _goStatsTxt.text =
-            $"Ticks survived    {s.Tick}\n" +
+            $"Ticks survived    {s.Tick}   [{_difficulty}]\n" +
             $"Final purse       §{s.Purse:N0}\n" +
             $"Town coffers      §{s.Coffers:N0}\n" +
             $"Town quality      {Bar(s.TownQuality)}  {s.TownQuality:P0}\n" +
@@ -1170,10 +1268,15 @@ public class GameController : MonoBehaviour
         rawRT.offsetMin = rawRT.offsetMax = Vector2.zero;
         _rankingsGraph = rawGO.AddComponent<RawImage>();
 
-        // Summary text below graph
-        _rankStatsTxt = MkTxt(card, "", 13, 24f, 14f, CW - 48f, 68f,
+        // Summary text (left half) + high scores (right half) below graph
+        float halfW = (CW - 48f) / 2f - 8f;
+        _rankStatsTxt = MkTxt(card, "", 13, 24f, 14f, halfW, 68f,
             TextAnchor.UpperLeft, new Color(0.85f, 0.78f, 0.60f));
         _rankStatsTxt.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+        _highScoresTxt = MkTxt(card, "", 12, 24f + halfW + 16f, 14f, halfW, 68f,
+            TextAnchor.UpperLeft, new Color(0.88f, 0.80f, 0.45f));
+        _highScoresTxt.horizontalOverflow = HorizontalWrapMode.Wrap;
 
         go.SetActive(false);
     }
@@ -1221,6 +1324,25 @@ public class GameController : MonoBehaviour
         _rankStatsTxt.text =
             $"Ticks: {s.Tick}   Peak Purse: §{maxP:N0}   Peak Coffers: §{maxC:N0}\n" +
             $"Town {Bar(s.TownQuality)}   Safety {Bar(s.Safety)}   Rep {Bar(s.Reputation)}";
+
+        if (_highScoresTxt != null)
+        {
+            if (_highScores == null || _highScores.Entries.Count == 0)
+            {
+                _highScoresTxt.text = "★ TOP RUNS\n—";
+            }
+            else
+            {
+                var sb = new System.Text.StringBuilder("★ TOP RUNS\n");
+                for (int i = 0; i < _highScores.Entries.Count; i++)
+                {
+                    var e = _highScores.Entries[i];
+                    string icon = e.EndReason == "WealthWin" ? "★" : "✕";
+                    sb.AppendLine($"{i+1}. {icon} §{e.FinalPurse:N0}  t{e.FinalTick}  [{e.Difficulty[0]}]");
+                }
+                _highScoresTxt.text = sb.ToString().TrimEnd();
+            }
+        }
     }
 
     void SliderRow(RectTransform parent, string label, ref float y,

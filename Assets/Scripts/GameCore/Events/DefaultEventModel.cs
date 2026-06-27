@@ -78,8 +78,12 @@ namespace GameCore.Events
                 if (state.RivalTowns != null)
                     foreach (var r in state.RivalTowns)
                         if (r.TrafficShare > maxRivalShare) maxRivalShare = r.TrafficShare;
-                float incursionChance = config.RivalIncursionChance
-                    + maxRivalShare * config.RivalIncursionPressurePerSharePoint;
+                // Small operations attract less rival attention — scale pressure by org level.
+                float orgScale = state.OrganizedCrimeLevel >= 2
+                    ? 1f
+                    : state.OrganizedCrimeLevel * config.RivalIncursionPressureOrgScale;
+                float incursionChance = (config.RivalIncursionChance
+                    + maxRivalShare * config.RivalIncursionPressurePerSharePoint) * orgScale;
                 if (rng.NextDouble() < incursionChance)
                     return MakeRivalIncursion(config, rng, maxRivalShare);
             }
