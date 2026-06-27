@@ -542,6 +542,96 @@ public static class SimHarness
         }
         sweeps.Add(revSweep);
 
+        // §difficulty_presets — validate Easy / Normal / Hard win rate targets.
+        // Strategy: org2+pay_all (recommended Normal entry path) across all difficulties.
+        // Also: org1 on Easy (predicted viable ~85%), org3 on Hard (skilled ceiling).
+        // 5 configs × 20 seeds × 200 ticks
+        var diffSweep = new SweepSpec { Name = "difficulty_presets", SeedCount = 20, MaxTicks = 200 };
+
+        float diffSetupCost = new SimConfig().OrganizedCrimeSetupCostPerLevel;
+
+        foreach (var spec in new[]
+        {
+            new { id = "easy_org1",   difficulty = 0, orgTarget = 1, bribe = 3f },
+            new { id = "easy_org2",   difficulty = 0, orgTarget = 2, bribe = 5f },
+            new { id = "normal_org2", difficulty = 1, orgTarget = 2, bribe = 5f },
+            new { id = "hard_org2",   difficulty = 2, orgTarget = 2, bribe = 5f },
+            new { id = "hard_org3",   difficulty = 2, orgTarget = 3, bribe = 7f },
+        })
+        {
+            int   orgTarget   = spec.orgTarget;
+            float bribeAmt    = spec.bribe;
+            float setupNeeded = orgTarget * diffSetupCost;
+
+            SimConfig cfg;
+            switch (spec.difficulty)
+            {
+                case 0:
+                    cfg = new SimConfig
+                    {
+                        RivalIncursionChance                = 0.05f,
+                        RivalIncursionPressurePerSharePoint = 0.12f,
+                        RivalIncursionTributeCost           = 30f,
+                        WealthWinThreshold                  = 2500f,
+                        AuditThreshold                      = 88f,
+                        RivalQualityGainRate                = 0.003f,
+                        TributePerTick                      = 4f,
+                        InspectorVisitChance                = 0.03f,
+                    };
+                    break;
+                case 2:
+                    cfg = new SimConfig
+                    {
+                        RivalIncursionChance                = 0.14f,
+                        RivalIncursionPressurePerSharePoint = 0.50f,
+                        WealthWinThreshold                  = 5000f,
+                        AuditThreshold                      = 60f,
+                        RivalQualityGainRate                = 0.012f,
+                        TributePerTick                      = 9f,
+                        MerchantComplaintChance             = 0.18f,
+                        InspectorVisitChance                = 0.08f,
+                    };
+                    break;
+                default:
+                    cfg = new SimConfig();
+                    break;
+            }
+
+            diffSweep.Configs.Add(new ConfigEntry
+            {
+                Id     = spec.id,
+                Config = cfg,
+                CreateStrategy = () =>
+                {
+                    bool inCrimePhase = orgTarget == 0;
+                    return state =>
+                    {
+                        if (!inCrimePhase && state.Purse >= setupNeeded)
+                            inCrimePhase = true;
+
+                        int delta = 0;
+                        if (inCrimePhase && state.OrganizedCrimeLevel < orgTarget
+                            && state.Purse >= diffSetupCost)
+                            delta = 1;
+
+                        GameCore.Events.EventOption choice = GameCore.Events.EventOption.None;
+                        if (state.PendingEvent != null)
+                            choice = GameCore.Events.EventOption.OptionA;
+
+                        return new PlayerInput
+                        {
+                            TaxRate                  = 0.20f,
+                            SkimFraction             = inCrimePhase ? 0.10f : 0.40f,
+                            OrganizedCrimeLevelDelta = delta,
+                            BribeAmount              = inCrimePhase ? bribeAmt : 0f,
+                            EventChoice              = choice,
+                        };
+                    };
+                },
+            });
+        }
+        sweeps.Add(diffSweep);
+
         return sweeps;
     }
 

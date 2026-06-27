@@ -325,7 +325,7 @@ public class GameController : MonoBehaviour
                 cfg.WealthWinThreshold                  = 5000f;
                 cfg.AuditThreshold                      = 60f;
                 cfg.RivalQualityGainRate                = 0.012f;
-                cfg.TributePerTick                      = 10f;
+                cfg.TributePerTick                      = 9f;
                 cfg.MerchantComplaintChance             = 0.18f;
                 cfg.InspectorVisitChance                = 0.08f;
                 break;
