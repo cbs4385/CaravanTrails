@@ -14,8 +14,9 @@ namespace CoreTests
     public class GoldenRunTests
     {
         // Recompute with: seed=42, default SimConfig, 50 ticks, TaxRate=0.15 SkimFraction=0.10
+        // Updated after adding rival town competition (§competitor) — rivals consume RNG each tick
         private const string ExpectedHash =
-            "ca124bbc436a280e521bf6f8a7ae6e64e4f948d284415e8bfc32f8a860e11989";
+            "a247bb63569fb918ecb4cc08cd8dbebe9f832eca5fe9c387cb17f96ab4dc3df0";
 
         [Test]
         public void GoldenRun_TelemetryHashMatchesBaseline()

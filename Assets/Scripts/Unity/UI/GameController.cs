@@ -42,6 +42,7 @@ public class GameController : MonoBehaviour
     GameObject _worldMapPanel;
     Image[]    _routeLineImgs;
     Text[]     _townQualTxts;
+    Text[]     _townDetailTxts;  // tax + share line per town (rivals) / share line (player)
 
     // ── Rankings ──────────────────────────────────────────────────────────────
     GameObject _rankingsPanel;
@@ -895,7 +896,8 @@ public class GameController : MonoBehaviour
 
         // Town nodes
         const float ND = 52f;
-        _townQualTxts = new Text[TownNames.Length];
+        _townQualTxts  = new Text[TownNames.Length];
+        _townDetailTxts = new Text[TownNames.Length];
         for (int i = 0; i < TownNames.Length; i++)
         {
             bool isPlayer = i == PlayerTown;
@@ -914,6 +916,9 @@ public class GameController : MonoBehaviour
 
             _townQualTxts[i] = MkTxt(rt, "████████", 9, p.x - 44f, p.y - ND / 2f - 36f, 88f, 14f,
                 TextAnchor.MiddleCenter, new Color(0.40f, 0.80f, 0.40f));
+
+            _townDetailTxts[i] = MkTxt(rt, "", 9, p.x - 55f, p.y - ND / 2f - 52f, 110f, 14f,
+                TextAnchor.MiddleCenter, new Color(0.55f, 0.45f, 0.30f));
 
             if (isPlayer)
             {
@@ -962,11 +967,32 @@ public class GameController : MonoBehaviour
             _routeLineImgs[i].color = new Color(0.72f * br, 0.52f * br, 0.26f * br, 0.85f);
         }
 
+        // Compute player traffic share from rival states
+        float rivalShareSum = 0f;
+        if (s.RivalTowns != null)
+            foreach (var r in s.RivalTowns)
+                rivalShareSum += r.TrafficShare;
+        float playerShare = Mathf.Clamp01(1f - rivalShareSum);
+
         for (int i = 0; i < _townQualTxts.Length; i++)
         {
-            float q = i == PlayerTown
-                ? s.TownQuality
-                : 0.55f + Mathf.Sin(i * 2.1f + s.Tick * 0.012f) * 0.14f;
+            float q;
+            if (i == PlayerTown)
+            {
+                q = s.TownQuality;
+                if (_townDetailTxts[i] != null)
+                    _townDetailTxts[i].text = $"{playerShare:P0} of traffic";
+            }
+            else
+            {
+                var rival = s.RivalTowns != null && i < s.RivalTowns.Length ? s.RivalTowns[i] : null;
+                q = rival?.Quality ?? (0.55f + Mathf.Sin(i * 2.1f) * 0.14f);
+                if (_townDetailTxts[i] != null)
+                    _townDetailTxts[i].text = rival != null
+                        ? $"tax {rival.TaxRate:P0} · {rival.TrafficShare:P0}"
+                        : "";
+            }
+
             int on = Mathf.RoundToInt(Mathf.Clamp01(q) * 8);
             _townQualTxts[i].text  = new string('█', on) + new string('░', 8 - on);
             _townQualTxts[i].color = Color.Lerp(

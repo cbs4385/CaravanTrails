@@ -17,6 +17,7 @@ namespace GameCore.Sim
         public bool AuditOccurred;
         public bool AuditFailed;
         public float AuditFineAmount;
+        public float PlayerTrafficShare;  // fraction of network traffic this tick (1.0 when rivals disabled)
         public EventType EventFired = EventType.None;
     }
 }

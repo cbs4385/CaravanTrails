@@ -20,6 +20,16 @@ namespace GameCore.Economy
                  + config.AttractivenessWeightReputation * aReputation;
         }
 
+        // Rivals have no reputation system; 0.5 is the neutral midpoint.
+        public static float ComputeRivalAttractiveness(RivalTownState rival, SimConfig config)
+        {
+            float aTax = (float)Math.Exp(-config.TaxElasticityK * rival.TaxRate);
+            return config.AttractivenessWeightTax         * aTax
+                 + config.AttractivenessWeightSafety      * Clamp01(rival.Safety)
+                 + config.AttractivenessWeightTownQuality * Clamp01(rival.Quality)
+                 + config.AttractivenessWeightReputation  * 0.5f;
+        }
+
         private static float Clamp01(float v) => v < 0f ? 0f : v > 1f ? 1f : v;
     }
 }

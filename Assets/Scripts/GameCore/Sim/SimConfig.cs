@@ -73,6 +73,16 @@ namespace GameCore.Sim
         public float UpgradeRouteImprovementCostScalePerLevel = 1.6f;
         public float UpgradeRouteImprovementAttractivenessPerLevel = 0.08f; // +0.08 flat attractiveness per level
 
+        // §competitor — rival town AI (Westport, Millhaven, Eastgate, Southford)
+        public bool    EnableRivals               = true;
+        public float[] RivalBaseTaxRates          = { 0.12f, 0.18f, 0.25f, 0.08f };
+        public float[] RivalInitialQualities      = { 0.70f, 0.60f, 0.50f, 0.55f };
+        public float[] RivalInitialSafeties       = { 0.65f, 0.60f, 0.55f, 0.60f };
+        public float   RivalQualityDecayRate      = 0.006f;
+        public float   RivalQualityGainRate       = 0.006f;
+        public float   RivalTaxDriftMagnitude     = 0.008f;
+        public float   RivalQualityFundingThresh  = 0.20f;
+
         // §4.1 Reputation — lagged merchant perception
         public float ReputationTownWeight = 0.4f;
         public float ReputationSafetyWeight = 0.4f;

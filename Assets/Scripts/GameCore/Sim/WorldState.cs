@@ -36,7 +36,20 @@ namespace GameCore.Sim
         // Active event awaiting player response (null = none pending)
         public PendingEvent PendingEvent;
 
-        public WorldState Clone() => (WorldState)MemberwiseClone();
+        // Rival towns competing for road traffic (null when EnableRivals = false)
+        public RivalTownState[] RivalTowns;
+
+        public WorldState Clone()
+        {
+            var c = (WorldState)MemberwiseClone();
+            if (RivalTowns != null)
+            {
+                c.RivalTowns = new RivalTownState[RivalTowns.Length];
+                for (int i = 0; i < RivalTowns.Length; i++)
+                    c.RivalTowns[i] = RivalTowns[i]?.Clone();
+            }
+            return c;
+        }
 
         public static WorldState Default() => new WorldState
         {

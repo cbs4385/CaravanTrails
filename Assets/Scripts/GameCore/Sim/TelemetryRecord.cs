@@ -23,6 +23,7 @@ namespace GameCore.Sim
         public float RouteAttractiveness;
         public bool AuditFired;
         public bool BetrayalFired;
+        public float PlayerTrafficShare;
         public EndReason EndReason;
         public EventType EventFired;
 
@@ -31,14 +32,14 @@ namespace GameCore.Sim
             "tax_rate,skim_fraction,traffic_volume,official_revenue," +
             "skimmed_amount,coffers_contribution,crime_yield," +
             "organized_crime_level,rival_pressure,route_attractiveness," +
-            "audit_fired,betrayal_fired,end_reason,event_fired";
+            "player_traffic_share,audit_fired,betrayal_fired,end_reason,event_fired";
 
         public string ToCsvRow() =>
             $"{Tick},{Purse:F2},{Coffers:F2},{TownQuality:F3},{Safety:F3}," +
             $"{Reputation:F3},{Heat:F3},{TaxRate:F3},{SkimFraction:F3}," +
             $"{TrafficVolume:F2},{OfficialRevenue:F2},{SkimmedAmount:F2}," +
             $"{CoffersContribution:F2},{CrimeYield:F2},{OrganizedCrimeLevel}," +
-            $"{RivalPressure:F3},{RouteAttractiveness:F3}," +
+            $"{RivalPressure:F3},{RouteAttractiveness:F3},{PlayerTrafficShare:F3}," +
             $"{(AuditFired ? 1 : 0)},{(BetrayalFired ? 1 : 0)},{EndReason},{EventFired}";
     }
 }

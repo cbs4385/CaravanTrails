@@ -43,6 +43,8 @@ namespace GameCore.Sim
             _endCondition = endCondition ?? new DefaultEndConditionEvaluator();
             _eventModel = eventModel ?? new DefaultEventModel();
             State = (initialState ?? WorldState.Default()).Clone();
+            if (Config.EnableRivals && State.RivalTowns == null)
+                State.RivalTowns = RivalTownAI.BuildDefaults(Config);
         }
 
         public TickResult Tick(PlayerInput input)
@@ -56,10 +58,29 @@ namespace GameCore.Sim
             // 0. Resolve pending event from previous tick (None choice = auto-dismiss)
             _eventModel.ResolveEvent(s, input.EventChoice, Config);
 
-            // 1. Route attractiveness & traffic (RouteImprovement adds flat attractiveness bonus)
+            // 1. Route attractiveness & competitive traffic share (§competitor)
+            if (Config.EnableRivals && s.RivalTowns != null)
+                RivalTownAI.Tick(s.RivalTowns, Config, _rng);
+
             ctx.RouteAttractiveness = TrafficModel.ComputeAttractiveness(s, input.TaxRate, Config)
                 + s.RouteImprovementLevel * Config.UpgradeRouteImprovementAttractivenessPerLevel;
-            ctx.TrafficVolume = _caravanSource.GetTrafficVolume(ctx.RouteAttractiveness, Config, _rng);
+
+            float rivalSumA = 0f;
+            if (Config.EnableRivals && s.RivalTowns != null)
+                foreach (var r in s.RivalTowns)
+                    rivalSumA += TrafficModel.ComputeRivalAttractiveness(r, Config);
+
+            float totalA = ctx.RouteAttractiveness + rivalSumA;
+            ctx.PlayerTrafficShare = totalA > 0.001f ? ctx.RouteAttractiveness / totalA : 1f;
+
+            // Scale by (1 + rivalCount) so an average player keeps similar traffic to the solo game.
+            int totalTowns = 1 + (s.RivalTowns?.Length ?? 0);
+            ctx.TrafficVolume = _caravanSource.GetTrafficVolume(ctx.RouteAttractiveness, Config, _rng)
+                * ctx.PlayerTrafficShare * totalTowns;
+
+            if (Config.EnableRivals && s.RivalTowns != null && totalA > 0.001f)
+                foreach (var r in s.RivalTowns)
+                    r.TrafficShare = TrafficModel.ComputeRivalAttractiveness(r, Config) / totalA;
 
             // 2. Official revenue & skim (§4.2)
             ctx.OfficialRevenue = TaxationModel.ComputeOfficialRevenue(ctx.TrafficVolume, input.TaxRate);
@@ -257,6 +278,7 @@ namespace GameCore.Sim
                 RouteAttractiveness = ctx.RouteAttractiveness,
                 AuditFired = ctx.AuditOccurred,
                 BetrayalFired = ctx.BetrayalOccurred,
+                PlayerTrafficShare = ctx.PlayerTrafficShare,
                 EndReason = s.EndReason,
                 EventFired = ctx.EventFired,
             };
