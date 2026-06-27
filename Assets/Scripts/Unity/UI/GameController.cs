@@ -33,7 +33,7 @@ public class GameController : MonoBehaviour
 
     Slider _taxSl, _skimSl, _bribeSl, _unorgSl;
     Text   _taxVal, _skimVal, _bribeVal, _unorgVal;
-    Text   _tickTxt, _purseTxt, _coffersTxt, _legitTxt, _heatTxt;
+    Text   _tickTxt, _purseTxt, _coffersTxt, _legitTxt, _trafficShareTxt, _heatTxt;
     Text   _qualTxt, _safetyTxt, _repTxt, _orgLvTxt, _statusTxt;
     Text   _autoLbl;
     Text   _collUpgTxt, _heatUpgTxt, _connUpgTxt, _townUpgTxt, _routeUpgTxt;
@@ -203,6 +203,19 @@ public class GameController : MonoBehaviour
         float legitBuffer = lastContrib * cfg.LegitimacyHeatBufferPerCoffersUnit;
         float legitNorm   = Mathf.Clamp01(lastContrib / (cfg.TributePerTick * 5f));
         _legitTxt.text = $"<color=#3a7a3a>Legit</color>    {Bar(legitNorm)}  −{legitBuffer:F2} heat";
+
+        float lastShare = tele.Count > 0 ? tele[tele.Count - 1].PlayerTrafficShare : 1f / 5f;
+        bool rivalsActive = s.RivalTowns != null && s.RivalTowns.Length > 0;
+        _trafficShareTxt.gameObject.SetActive(rivalsActive);
+        if (rivalsActive)
+        {
+            _trafficShareTxt.text = $"<color=#4a8abf>Traffic</color>  {Bar(Mathf.Clamp01(lastShare / 0.50f))}  {lastShare:P0}";
+            _trafficShareTxt.color = lastShare < 0.18f
+                ? new Color(0.85f, 0.50f, 0.25f)
+                : lastShare > 0.28f
+                    ? new Color(0.42f, 0.85f, 0.72f)
+                    : new Color(0.82f, 0.72f, 0.48f);
+        }
 
         _qualTxt.text    = $"<color=#907050>Town</color>     {Bar(s.TownQuality)}  {s.TownQuality:P0}";
         _safetyTxt.text  = $"<color=#907050>Safety</color>   {Bar(s.Safety)}  {s.Safety:P0}";
@@ -429,6 +442,7 @@ public class GameController : MonoBehaviour
         _coffersTxt.color = new Color(1.00f, 0.88f, 0.55f);
         _legitTxt   = StatLine(rp, rx, tw, ref ry);
         _legitTxt.color = new Color(0.62f, 0.92f, 0.62f);
+        _trafficShareTxt = StatLine(rp, rx, tw, ref ry);
 
         ry -= 6f;
         BgImg(MkRT(rp, "Div1", rx, ry, tw - 24f, 1f), new Color(0.42f, 0.30f, 0.12f));

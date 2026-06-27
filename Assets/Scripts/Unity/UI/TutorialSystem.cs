@@ -10,7 +10,7 @@ public class TutorialSystem : MonoBehaviour
 {
     // ── Tip catalogue ─────────────────────────────────────────────────────────
 
-    enum TipId { GameStart, HeatWarning, FirstEvent, CoffersLow, CrimeReady, WinHalfway, LegitimacyNote }
+    enum TipId { GameStart, HeatWarning, FirstEvent, CoffersLow, CrimeReady, WinHalfway, LegitimacyNote, RivalNetwork }
 
     readonly struct TipData { public readonly TipId Id; public readonly string Body;
         public TipData(TipId id, string body) { Id = id; Body = body; } }
@@ -51,6 +51,14 @@ public class TutorialSystem : MonoBehaviour
             "The Empire sees a diligent official funding the town — and <b>suspicion cools</b>. " +
             "Lowering your <b>Skim</b> doesn't just fund the town; it actively reduces how fast " +
             "Heat builds. Watch the green <b>Legit</b> bar on the right."),
+
+        new TipData(TipId.RivalNetwork,
+            "Four rival prefects work the same silk road!\n\n" +
+            "Westport, Millhaven, Eastgate, and Southford all compete for the same merchant traffic. " +
+            "The blue <b>Traffic</b> bar shows your share — below 20% means rivals are winning.\n\n" +
+            "Open the <b>World Map</b> to spy on their tax rates. " +
+            "<b>Eastgate</b>'s prefect is greedy and already losing ground. " +
+            "<b>Southford</b> keeps taxes low — don't ignore them."),
     };
 
     // ── Panel geometry ────────────────────────────────────────────────────────
@@ -119,6 +127,7 @@ public class TutorialSystem : MonoBehaviour
         TryQueue(TipId.CrimeReady,       state.Purse >= 38f  && state.OrganizedCrimeLevel == 0 && state.Tick > 5);
         TryQueue(TipId.WinHalfway,       state.Purse >= 1750f);
         TryQueue(TipId.LegitimacyNote,   state.Heat  > 28f  && coffersContribLastTick < 8f && state.Tick > 8);
+        TryQueue(TipId.RivalNetwork,     state.Tick  > 4    && state.RivalTowns != null && state.RivalTowns.Length > 0);
 
         if (_targetY < 0f && _queue.Count > 0) ShowNext();
     }
