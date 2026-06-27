@@ -80,10 +80,12 @@
     <Compile Include="Assets\Scripts\GameCore\Crime\CrimeResult.cs" />
     <Compile Include="Assets\Scripts\GameCore\Sim\WorldState.cs" />
     <Compile Include="Assets\Scripts\GameCore\Sim\Simulator.cs" />
+    <Compile Include="Assets\Scripts\GameCore\Sim\RivalTownAI.cs" />
     <Compile Include="Assets\Scripts\GameCore\Events\EventOption.cs" />
     <Compile Include="Assets\Scripts\GameCore\Events\DefaultEventModel.cs" />
     <Compile Include="Assets\Scripts\GameCore\Economy\TaxationModel.cs" />
     <Compile Include="Assets\Scripts\GameCore\Sim\TickContext.cs" />
+    <Compile Include="Assets\Scripts\GameCore\Sim\RivalTownState.cs" />
     <Compile Include="Assets\Scripts\GameCore\Economy\CoffersModel.cs" />
     <Compile Include="Assets\Scripts\GameCore\Events\IEventModel.cs" />
     <Compile Include="Assets\Scripts\GameCore\Heat\DefaultHeatModel.cs" />
