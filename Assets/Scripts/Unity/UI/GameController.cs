@@ -708,9 +708,11 @@ public class GameController : MonoBehaviour
         _evBodyTxt.text = evt.BodyText;
         _evOptALbl.text = evt.OptionALabel;
         _evOptBLbl.text = evt.OptionBLabel;
-        if      (evt.Type == GameCore.Events.EventType.TradeDelegation) _sfx?.PlayEventTrade();
-        else if (evt.Type == GameCore.Events.EventType.DivertedCaravan) _sfx?.PlayEventDiverted();
-        else                                                             _sfx?.PlayEvent();
+        if      (evt.Type == GameCore.Events.EventType.TradeDelegation)    _sfx?.PlayEventTrade();
+        else if (evt.Type == GameCore.Events.EventType.SeasonalHarvest)   _sfx?.PlayEventTrade();
+        else if (evt.Type == GameCore.Events.EventType.DivertedCaravan)   _sfx?.PlayEventDiverted();
+        else if (evt.Type == GameCore.Events.EventType.SeasonalBanditSurge) _sfx?.PlayEventDiverted();
+        else                                                               _sfx?.PlayEvent();
         _eventPanel.SetActive(true);
         // Pause auto-tick so player must respond before sim advances
         _autoTick = false;
@@ -776,6 +778,12 @@ public class GameController : MonoBehaviour
             () => BeginGame(Difficulty.Normal), new Color(0.62f, 0.40f, 0.10f));
         MkBtn(card, "HARD",   30f + dbw * 2f,    24f, dbw, 46f,
             () => BeginGame(Difficulty.Hard),   new Color(0.52f, 0.12f, 0.08f));
+
+        // Strategy hints under each button
+        var hc = new Color(0.60f, 0.60f, 0.60f);
+        MkTxt(card, "org 1–2 viable",     9, 10f,             74f, dbw, 12f, TextAnchor.UpperCenter, hc);
+        MkTxt(card, "org 2 recommended",  9, 20f + dbw,       74f, dbw, 12f, TextAnchor.UpperCenter, hc);
+        MkTxt(card, "org 3 required",     9, 30f + dbw * 2f,  74f, dbw, 12f, TextAnchor.UpperCenter, hc);
     }
 
     // ── Game-over overlay construction ────────────────────────────────────────
@@ -851,21 +859,25 @@ public class GameController : MonoBehaviour
 
         _goSubTxt.text = EndReasonFlavour(s);
 
-        int nAudit = 0, nRival = 0, nMerchant = 0, nInspector = 0, nTrade = 0, nDiverted = 0;
+        int nAudit = 0, nRival = 0, nMerchant = 0, nInspector = 0, nTrade = 0, nDiverted = 0, nSeasonal = 0;
         foreach (var r in _sim.Telemetry)
         {
-            if      (r.EventFired == GameCore.Events.EventType.AuditWarning)      nAudit++;
-            else if (r.EventFired == GameCore.Events.EventType.RivalIncursion)    nRival++;
-            else if (r.EventFired == GameCore.Events.EventType.MerchantComplaint) nMerchant++;
-            else if (r.EventFired == GameCore.Events.EventType.InspectorVisit)    nInspector++;
-            else if (r.EventFired == GameCore.Events.EventType.TradeDelegation)   nTrade++;
-            else if (r.EventFired == GameCore.Events.EventType.DivertedCaravan)   nDiverted++;
+            if      (r.EventFired == GameCore.Events.EventType.AuditWarning)        nAudit++;
+            else if (r.EventFired == GameCore.Events.EventType.RivalIncursion)      nRival++;
+            else if (r.EventFired == GameCore.Events.EventType.MerchantComplaint)   nMerchant++;
+            else if (r.EventFired == GameCore.Events.EventType.InspectorVisit)      nInspector++;
+            else if (r.EventFired == GameCore.Events.EventType.TradeDelegation)     nTrade++;
+            else if (r.EventFired == GameCore.Events.EventType.DivertedCaravan)     nDiverted++;
+            else if (r.EventFired == GameCore.Events.EventType.SeasonalHarvest     ||
+                     r.EventFired == GameCore.Events.EventType.SeasonalGovernorVisit||
+                     r.EventFired == GameCore.Events.EventType.SeasonalBanditSurge  ||
+                     r.EventFired == GameCore.Events.EventType.SeasonalAuditSeason) nSeasonal++;
         }
-        int nTotal = nAudit + nRival + nMerchant + nInspector + nTrade + nDiverted;
+        int nTotal = nAudit + nRival + nMerchant + nInspector + nTrade + nDiverted + nSeasonal;
         string eventLines = nTotal == 0 ? "" :
             $"\nEvents faced      {nTotal}  ({_eventsPaid} paid · {_eventsResisted} refused)\n" +
             $"  Audit {nAudit}  Rival {nRival}  Guild {nMerchant}  Inspect {nInspector}\n" +
-            $"  Trade deal {nTrade}  Diverted {nDiverted}";
+            $"  Trade deal {nTrade}  Diverted {nDiverted}  Seasonal {nSeasonal}";
 
         _goStatsTxt.text =
             $"Ticks survived    {s.Tick}   [{_difficulty}]\n" +

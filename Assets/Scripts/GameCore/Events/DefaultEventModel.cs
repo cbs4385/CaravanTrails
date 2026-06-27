@@ -64,6 +64,10 @@ namespace GameCore.Events
             if (!config.EnableEvents) return null;
             if (state.PendingEvent != null) return null;
 
+            // One-shot seasonal beats fire at tick thresholds before probabilistic events
+            var seasonal = TryFireSeasonalEvent(state);
+            if (seasonal != null) return seasonal;
+
             if (state.Tick >= config.InspectorVisitStartTick
                 && rng.NextDouble() < config.InspectorVisitChance)
                 return MakeInspectorVisit(config, rng);
@@ -182,6 +186,47 @@ namespace GameCore.Events
                             state.Safety  = Math.Max(0f, state.Safety  - config.DivertedCaravanAcceptSafetyPenalty);
                         }
                         break;
+
+                    case EventType.SeasonalHarvest:
+                        if (choice == EventOption.OptionA)
+                        {
+                            state.Purse += 70f;
+                            state.Heat  += 8f;
+                        }
+                        break;
+
+                    case EventType.SeasonalGovernorVisit:
+                        if (choice == EventOption.OptionA)
+                        {
+                            state.Purse      = Math.Max(0f, state.Purse      - 60f);
+                            state.Heat       = Math.Max(0f, state.Heat       - 15f);
+                            state.Reputation = Math.Min(1f, state.Reputation + 0.08f);
+                        }
+                        break;
+
+                    case EventType.SeasonalBanditSurge:
+                        if (choice == EventOption.OptionA)
+                        {
+                            state.Purse  = Math.Max(0f, state.Purse  - 45f);
+                            state.Safety = Math.Min(1f, state.Safety + 0.06f);
+                        }
+                        else
+                        {
+                            state.Safety = Math.Max(0f, state.Safety - 0.08f);
+                        }
+                        break;
+
+                    case EventType.SeasonalAuditSeason:
+                        if (choice == EventOption.OptionA)
+                        {
+                            state.Purse = Math.Max(0f, state.Purse - 90f);
+                            state.Heat  = Math.Max(0f, state.Heat  - 20f);
+                        }
+                        else
+                        {
+                            state.Heat += 12f;
+                        }
+                        break;
                 }
             }
 
@@ -258,6 +303,65 @@ namespace GameCore.Events
             OptionBLabel = $"Accept the loss  (-{c.DivertedCaravanAcceptSafetyPenalty:P0} safety)",
             OptionACost  = c.DivertedCaravanDispatchCost,
             OptionBEffect= c.DivertedCaravanAcceptSafetyPenalty,
+        };
+
+        // ── Seasonal events ───────────────────────────────────────────────────
+
+        static PendingEvent TryFireSeasonalEvent(WorldState state)
+        {
+            if (state.Tick >= 25  && (state.SeasonalEventsMask & 1) == 0)
+            { state.SeasonalEventsMask |= 1; return MakeSeasonalHarvest(); }
+            if (state.Tick >= 50  && (state.SeasonalEventsMask & 2) == 0)
+            { state.SeasonalEventsMask |= 2; return MakeSeasonalGovernorVisit(); }
+            if (state.Tick >= 75  && (state.SeasonalEventsMask & 4) == 0)
+            { state.SeasonalEventsMask |= 4; return MakeSeasonalBanditSurge(); }
+            if (state.Tick >= 100 && (state.SeasonalEventsMask & 8) == 0)
+            { state.SeasonalEventsMask |= 8; return MakeSeasonalAuditSeason(); }
+            return null;
+        }
+
+        static PendingEvent MakeSeasonalHarvest() => new PendingEvent
+        {
+            Type         = EventType.SeasonalHarvest,
+            Headline     = "Harvest Season Opens",
+            BodyText     = "The autumn caravans are rolling and merchant traffic is at its seasonal peak. Your collectors stand ready to make the most of the rush — for a price.",
+            OptionALabel = "Push the collectors  (+§70 purse, +8 heat)",
+            OptionBLabel = "Standard rates  (no effect)",
+            OptionACost  = 0f,
+            OptionBEffect= 0f,
+        };
+
+        static PendingEvent MakeSeasonalGovernorVisit() => new PendingEvent
+        {
+            Type         = EventType.SeasonalGovernorVisit,
+            Headline     = "Governor Tours the Province",
+            BodyText     = "The provincial governor is making his rounds. A lavish reception at your palace would smooth relations with the capital — and give the imperial auditors less to look for.",
+            OptionALabel = "Host a banquet  (-§60 purse, -15 heat, +8% rep)",
+            OptionBLabel = "Keep a low profile  (no effect)",
+            OptionACost  = 60f,
+            OptionBEffect= 0f,
+        };
+
+        static PendingEvent MakeSeasonalBanditSurge() => new PendingEvent
+        {
+            Type         = EventType.SeasonalBanditSurge,
+            Headline     = "Winter Bandit Season",
+            BodyText     = "With the first winter storms, organized raiders are hitting the roads. Merchant caravans are skittish and rerouting. You can fund extra patrols — or let the safety situation deteriorate.",
+            OptionALabel = "Fund road patrols  (-§45 purse, +6% safety)",
+            OptionBLabel = "Stay out of it  (-8% safety)",
+            OptionACost  = 45f,
+            OptionBEffect= 0.08f,
+        };
+
+        static PendingEvent MakeSeasonalAuditSeason() => new PendingEvent
+        {
+            Type         = EventType.SeasonalAuditSeason,
+            Headline     = "Imperial Year-End Accounts",
+            BodyText     = "The empire's fiscal year closes. Imperial assessors are reviewing provincial ledgers across the region. A well-placed gift ensures your books stay quietly unexamined.",
+            OptionALabel = "Grease the assessor  (-§90 purse, -20 heat)",
+            OptionBLabel = "Present the books as-is  (+12 heat)",
+            OptionACost  = 90f,
+            OptionBEffect= 12f,
         };
     }
 }

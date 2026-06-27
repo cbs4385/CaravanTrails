@@ -9,5 +9,10 @@ namespace GameCore.Events
         InspectorVisit,
         TradeDelegation,
         DivertedCaravan,
+        // One-shot seasonal beats — fire once per run at tick thresholds
+        SeasonalHarvest,
+        SeasonalGovernorVisit,
+        SeasonalBanditSurge,
+        SeasonalAuditSeason,
     }
 }

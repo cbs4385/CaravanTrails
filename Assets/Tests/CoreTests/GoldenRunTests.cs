@@ -14,9 +14,9 @@ namespace CoreTests
     public class GoldenRunTests
     {
         // Recompute with: seed=42, default SimConfig, 50 ticks, TaxRate=0.15 SkimFraction=0.10
-        // Updated after adding TradeDelegation + DivertedCaravan events — new RNG checks each tick
+        // Updated after adding seasonal events (SeasonalHarvest fires at tick≥25, mask=1 at end)
         private const string ExpectedHash =
-            "67a84d151bcb4a3fe12d6be5e75b1a9a4e38a8153b9d5194fd35fa0ad6d4a99e";
+            "693110caf98bb39f4fe4dd909c35350068268f2a167f7ee332b1e36328f12866";
 
         [Test]
         public void GoldenRun_TelemetryHashMatchesBaseline()

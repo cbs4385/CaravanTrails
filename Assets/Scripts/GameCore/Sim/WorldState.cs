@@ -42,6 +42,10 @@ namespace GameCore.Sim
         // Ticks remaining on an active trade deal (0 = no deal active)
         public int TradeDealTicksRemaining;
 
+        // Bitmask tracking which seasonal events have already fired this run
+        // bit 0=Harvest(tick25) bit 1=GovernorVisit(tick50) bit 2=BanditSurge(tick75) bit 3=AuditSeason(tick100)
+        public int SeasonalEventsMask;
+
         public WorldState Clone()
         {
             var c = (WorldState)MemberwiseClone();
