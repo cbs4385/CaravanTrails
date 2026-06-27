@@ -405,6 +405,88 @@ public static class SimHarness
         }
         sweeps.Add(rivalSweep);
 
+        // §incursion_pressure — does scaling RivalIncursionChance with rival share
+        // create runaway event debt in late-game dominated scenarios?
+        // Baseline (no rivals) vs default pressure vs high pressure scale vs counter-strategies.
+        // All configs use org2+pay_all (known 70% baseline) so event differences are isolated.
+        var incSweep = new SweepSpec { Name = "incursion_pressure", SeedCount = 20, MaxTicks = 200 };
+
+        float incSetupCost   = new SimConfig().OrganizedCrimeSetupCostPerLevel;
+        float incSetupNeeded = 2 * incSetupCost;
+        float incCoffersBuf  = new SimConfig().TributePerTick * 8f;
+        float incRouteCost   = new SimConfig().UpgradeRouteImprovementCostBase;
+
+        foreach (var spec in new[]
+        {
+            // Flat 10% baseline — no rivals, no pressure scaling
+            new { id = "no_rivals_flat10",    enableRivals = false, pressureScale = 0.30f, taxRate = 0.20f, gainRate = 0.006f, buyRoute = false },
+            // Default rivals, default pressure (0.30/share)
+            new { id = "rivals_pressure_def", enableRivals = true,  pressureScale = 0.30f, taxRate = 0.20f, gainRate = 0.006f, buyRoute = false },
+            // Aggressive rivals (faster quality growth) — dominant share reached sooner
+            new { id = "rivals_pressure_str", enableRivals = true,  pressureScale = 0.30f, taxRate = 0.20f, gainRate = 0.015f, buyRoute = false },
+            // 2× pressure scale stress test — is this too punishing?
+            new { id = "rivals_pressure_2x",  enableRivals = true,  pressureScale = 0.60f, taxRate = 0.20f, gainRate = 0.006f, buyRoute = false },
+            // Lower tax pulls share back from rivals, reducing incursion pressure
+            new { id = "rivals_tax15_press",  enableRivals = true,  pressureScale = 0.30f, taxRate = 0.15f, gainRate = 0.006f, buyRoute = false },
+            // Route upgrade counter: maintains competitive attractiveness
+            new { id = "rivals_route_press",  enableRivals = true,  pressureScale = 0.30f, taxRate = 0.20f, gainRate = 0.006f, buyRoute = true  },
+        })
+        {
+            bool  er    = spec.enableRivals;
+            float ps    = spec.pressureScale;
+            float tr    = spec.taxRate;
+            float gr    = spec.gainRate;
+            bool  route = spec.buyRoute;
+
+            incSweep.Configs.Add(new ConfigEntry
+            {
+                Id = spec.id,
+                Config = new SimConfig
+                {
+                    EnableRivals                        = er,
+                    RivalIncursionPressurePerSharePoint = ps,
+                    RivalQualityGainRate                = gr,
+                },
+                CreateStrategy = () =>
+                {
+                    bool inCrimePhase   = false;
+                    bool routePurchased = false;
+                    return state =>
+                    {
+                        if (!inCrimePhase && state.Purse >= incSetupNeeded)
+                            inCrimePhase = true;
+
+                        int delta = 0;
+                        if (inCrimePhase && state.OrganizedCrimeLevel < 2 && state.Purse >= incSetupCost)
+                            delta = 1;
+
+                        GameCore.Events.EventOption choice = GameCore.Events.EventOption.None;
+                        if (state.PendingEvent != null)
+                            choice = GameCore.Events.EventOption.OptionA;
+
+                        UpgradePurchase upgrade = UpgradePurchase.None;
+                        if (route && !routePurchased && state.RouteImprovementLevel < 1
+                            && state.Coffers >= incRouteCost + incCoffersBuf)
+                        {
+                            upgrade        = UpgradePurchase.RouteImprovement;
+                            routePurchased = true;
+                        }
+
+                        return new PlayerInput
+                        {
+                            TaxRate                  = tr,
+                            SkimFraction             = inCrimePhase ? 0.10f : 0.40f,
+                            OrganizedCrimeLevelDelta = delta,
+                            BribeAmount              = inCrimePhase ? 5f : 0f,
+                            EventChoice              = choice,
+                            Upgrade                  = upgrade,
+                        };
+                    };
+                },
+            });
+        }
+        sweeps.Add(incSweep);
+
         return sweeps;
     }
 
@@ -460,8 +542,9 @@ public static class SimHarness
         int   firstHeat75Tick = -1;
         float totalSkimmed    = 0f;
         float totalCoffers    = 0f;
-        int   totalEvents     = 0;
-        float totalShare      = 0f;
+        int   totalEvents            = 0;
+        int   totalRivalIncursions   = 0;
+        float totalShare             = 0f;
         float minShare        = 1f;
         float threshold75     = config.AuditThreshold * 0.75f;
 
@@ -475,6 +558,8 @@ public static class SimHarness
             totalCoffers += row.CoffersContribution;
             if (row.EventFired != GameCore.Events.EventType.None)
                 totalEvents++;
+            if (row.EventFired == GameCore.Events.EventType.RivalIncursion)
+                totalRivalIncursions++;
             totalShare += row.PlayerTrafficShare;
             if (row.PlayerTrafficShare < minShare) minShare = row.PlayerTrafficShare;
         }
@@ -496,8 +581,9 @@ public static class SimHarness
             EndReason              = sim.State.EndReason,
             TotalSkimmed           = totalSkimmed,
             TotalCoffersContribution = totalCoffers,
-            TotalEventsFired       = totalEvents,
-            MeanPlayerTrafficShare = n > 0 ? totalShare / n : 1f,
+            TotalEventsFired           = totalEvents,
+            TotalRivalIncursionsFired  = totalRivalIncursions,
+            MeanPlayerTrafficShare     = n > 0 ? totalShare / n : 1f,
             MinPlayerTrafficShare  = n > 0 ? minShare   : 1f,
             Telemetry              = new List<TelemetryRecord>(sim.Telemetry),
         };
@@ -526,6 +612,7 @@ public static class SimHarness
             "final_heat,peak_heat,first_heat75_tick," +
             "final_town_quality,final_safety,end_reason," +
             "total_skimmed,total_coffers_contribution,wealth_win," +
+            "rival_incursions_fired," +
             "mean_player_traffic_share,min_player_traffic_share");
 
         foreach (var r in summaries)
@@ -536,6 +623,7 @@ public static class SimHarness
                 $"{r.FinalTownQuality:F3},{r.FinalSafety:F3},{r.EndReason}," +
                 $"{r.TotalSkimmed:F2},{r.TotalCoffersContribution:F2}," +
                 $"{(r.EndReason == EndReason.WealthWin ? 1 : 0)}," +
+                $"{r.TotalRivalIncursionsFired}," +
                 $"{r.MeanPlayerTrafficShare:F3},{r.MinPlayerTrafficShare:F3}");
 
         File.WriteAllText(Path.Combine(dir, $"{sweepName}_runs.csv"), sb.ToString());
@@ -565,7 +653,7 @@ public static class SimHarness
             "wealth_win_pct,audit_arrest_pct,rival_overthrow_pct," +
             "mean_peak_heat,mean_first_heat75_tick," +
             "mean_final_safety,mean_total_skimmed,mean_total_coffers," +
-            "mean_skim_to_coffers_ratio,mean_events_fired," +
+            "mean_skim_to_coffers_ratio,mean_events_fired,mean_rival_incursions," +
             "mean_player_traffic_share,min_player_traffic_share");
 
         foreach (var cfgId in order)
@@ -586,8 +674,9 @@ public static class SimHarness
             float meanTotalSkim    = Avg(runs, r => r.TotalSkimmed);
             float meanTotalCoffers  = Avg(runs, r => r.TotalCoffersContribution);
             float meanEventsFired        = Avg(runs, r => r.TotalEventsFired);
-            float meanTrafficShare        = Avg(runs, r => r.MeanPlayerTrafficShare);
-            float minTrafficShare         = Avg(runs, r => r.MinPlayerTrafficShare);
+            float meanRivalIncursions    = Avg(runs, r => r.TotalRivalIncursionsFired);
+            float meanTrafficShare       = Avg(runs, r => r.MeanPlayerTrafficShare);
+            float minTrafficShare        = Avg(runs, r => r.MinPlayerTrafficShare);
             // pocket-vs-coffers ratio: >1 means more skimmed than invested in town
             float skimToCoffersRatio = meanTotalCoffers > 0f ? meanTotalSkim / meanTotalCoffers : 0f;
 
@@ -597,7 +686,7 @@ public static class SimHarness
                 $"{wealthWinPct:F1},{auditPct:F1},{rivalPct:F1}," +
                 $"{meanPeakHeat:F1},{meanFirstHeat75:F1}," +
                 $"{meanFinalSafety:F3},{meanTotalSkim:F1},{meanTotalCoffers:F1}," +
-                $"{skimToCoffersRatio:F3},{meanEventsFired:F1}," +
+                $"{skimToCoffersRatio:F3},{meanEventsFired:F1},{meanRivalIncursions:F1}," +
                 $"{meanTrafficShare:F3},{minTrafficShare:F3}");
         }
 
@@ -639,6 +728,7 @@ public static class SimHarness
         public float  TotalSkimmed;
         public float  TotalCoffersContribution;
         public int    TotalEventsFired;
+        public int    TotalRivalIncursionsFired;
         public float  MeanPlayerTrafficShare;
         public float  MinPlayerTrafficShare;
         public List<TelemetryRecord> Telemetry;
