@@ -326,6 +326,85 @@ public static class SimHarness
         }
         sweeps.Add(legitSweep);
 
+        // §competitor — rival competition: does adding rivals break win-rate balance?
+        // Which counter-strategies work when rivals grow?
+        // 6 configs × 20 seeds × 200 ticks
+        var rivalSweep = new SweepSpec { Name = "rival_competition", SeedCount = 20, MaxTicks = 200 };
+
+        float rivalSetupCost    = new SimConfig().OrganizedCrimeSetupCostPerLevel;
+        float rivalSetupNeeded  = 2 * rivalSetupCost;
+        float rivalCoffersBuf   = new SimConfig().TributePerTick * 8f;
+        float rivalRouteCostBase= new SimConfig().UpgradeRouteImprovementCostBase;
+
+        foreach (var spec in new[]
+        {
+            // baseline: rivals off (should reproduce ~70% from organized_crime sweep)
+            new { id = "no_rivals_org2",     enableRivals = false, taxRate = 0.20f, gainRate = 0.006f, buyRoute = false },
+            // default rivals, same org2 strategy — does competition hurt win rate?
+            new { id = "rivals_org2",        enableRivals = true,  taxRate = 0.20f, gainRate = 0.006f, buyRoute = false },
+            // lower tax to pull traffic from rivals
+            new { id = "rivals_tax15_org2",  enableRivals = true,  taxRate = 0.15f, gainRate = 0.006f, buyRoute = false },
+            // higher tax — does it cost traffic share badly when rivals are competing?
+            new { id = "rivals_tax25_org2",  enableRivals = true,  taxRate = 0.25f, gainRate = 0.006f, buyRoute = false },
+            // aggressive rivals (faster quality growth) — stress-test the default config
+            new { id = "rivals_strong_org2", enableRivals = true,  taxRate = 0.20f, gainRate = 0.015f, buyRoute = false },
+            // counter rivals with a Route Improvement upgrade (boosts competitive attractiveness)
+            new { id = "rivals_route_org2",  enableRivals = true,  taxRate = 0.20f, gainRate = 0.006f, buyRoute = true  },
+        })
+        {
+            bool  enableRivals = spec.enableRivals;
+            float taxRate      = spec.taxRate;
+            float gainRate     = spec.gainRate;
+            bool  buyRoute     = spec.buyRoute;
+
+            rivalSweep.Configs.Add(new ConfigEntry
+            {
+                Id = spec.id,
+                Config = new SimConfig
+                {
+                    EnableRivals         = enableRivals,
+                    RivalQualityGainRate = gainRate,
+                },
+                CreateStrategy = () =>
+                {
+                    bool inCrimePhase   = false;
+                    bool routePurchased = false;
+                    return state =>
+                    {
+                        if (!inCrimePhase && state.Purse >= rivalSetupNeeded)
+                            inCrimePhase = true;
+
+                        int delta = 0;
+                        if (inCrimePhase && state.OrganizedCrimeLevel < 2 && state.Purse >= rivalSetupCost)
+                            delta = 1;
+
+                        GameCore.Events.EventOption choice = GameCore.Events.EventOption.None;
+                        if (state.PendingEvent != null)
+                            choice = GameCore.Events.EventOption.OptionA;
+
+                        UpgradePurchase upgrade = UpgradePurchase.None;
+                        if (buyRoute && !routePurchased && state.RouteImprovementLevel < 1
+                            && state.Coffers >= rivalRouteCostBase + rivalCoffersBuf)
+                        {
+                            upgrade        = UpgradePurchase.RouteImprovement;
+                            routePurchased = true;
+                        }
+
+                        return new PlayerInput
+                        {
+                            TaxRate                  = taxRate,
+                            SkimFraction             = inCrimePhase ? 0.10f : 0.40f,
+                            OrganizedCrimeLevelDelta = delta,
+                            BribeAmount              = inCrimePhase ? 5f : 0f,
+                            EventChoice              = choice,
+                            Upgrade                  = upgrade,
+                        };
+                    };
+                },
+            });
+        }
+        sweeps.Add(rivalSweep);
+
         return sweeps;
     }
 
@@ -382,6 +461,8 @@ public static class SimHarness
         float totalSkimmed    = 0f;
         float totalCoffers    = 0f;
         int   totalEvents     = 0;
+        float totalShare      = 0f;
+        float minShare        = 1f;
         float threshold75     = config.AuditThreshold * 0.75f;
 
         foreach (var row in sim.Telemetry)
@@ -394,8 +475,11 @@ public static class SimHarness
             totalCoffers += row.CoffersContribution;
             if (row.EventFired != GameCore.Events.EventType.None)
                 totalEvents++;
+            totalShare += row.PlayerTrafficShare;
+            if (row.PlayerTrafficShare < minShare) minShare = row.PlayerTrafficShare;
         }
 
+        int n = sim.Telemetry.Count;
         return new RunSummary
         {
             SweepName              = sweepName,
@@ -413,6 +497,8 @@ public static class SimHarness
             TotalSkimmed           = totalSkimmed,
             TotalCoffersContribution = totalCoffers,
             TotalEventsFired       = totalEvents,
+            MeanPlayerTrafficShare = n > 0 ? totalShare / n : 1f,
+            MinPlayerTrafficShare  = n > 0 ? minShare   : 1f,
             Telemetry              = new List<TelemetryRecord>(sim.Telemetry),
         };
     }
@@ -439,7 +525,8 @@ public static class SimHarness
             "final_tick,final_purse,peak_purse," +
             "final_heat,peak_heat,first_heat75_tick," +
             "final_town_quality,final_safety,end_reason," +
-            "total_skimmed,total_coffers_contribution,wealth_win");
+            "total_skimmed,total_coffers_contribution,wealth_win," +
+            "mean_player_traffic_share,min_player_traffic_share");
 
         foreach (var r in summaries)
             sb.AppendLine(
@@ -448,7 +535,8 @@ public static class SimHarness
                 $"{r.FinalHeat:F2},{r.PeakHeat:F2},{r.FirstHeat75Tick}," +
                 $"{r.FinalTownQuality:F3},{r.FinalSafety:F3},{r.EndReason}," +
                 $"{r.TotalSkimmed:F2},{r.TotalCoffersContribution:F2}," +
-                $"{(r.EndReason == EndReason.WealthWin ? 1 : 0)}");
+                $"{(r.EndReason == EndReason.WealthWin ? 1 : 0)}," +
+                $"{r.MeanPlayerTrafficShare:F3},{r.MinPlayerTrafficShare:F3}");
 
         File.WriteAllText(Path.Combine(dir, $"{sweepName}_runs.csv"), sb.ToString());
     }
@@ -477,7 +565,8 @@ public static class SimHarness
             "wealth_win_pct,audit_arrest_pct,rival_overthrow_pct," +
             "mean_peak_heat,mean_first_heat75_tick," +
             "mean_final_safety,mean_total_skimmed,mean_total_coffers," +
-            "mean_skim_to_coffers_ratio,mean_events_fired");
+            "mean_skim_to_coffers_ratio,mean_events_fired," +
+            "mean_player_traffic_share,min_player_traffic_share");
 
         foreach (var cfgId in order)
         {
@@ -496,7 +585,9 @@ public static class SimHarness
             float meanFinalSafety  = Avg(runs, r => r.FinalSafety);
             float meanTotalSkim    = Avg(runs, r => r.TotalSkimmed);
             float meanTotalCoffers  = Avg(runs, r => r.TotalCoffersContribution);
-            float meanEventsFired   = Avg(runs, r => r.TotalEventsFired);
+            float meanEventsFired        = Avg(runs, r => r.TotalEventsFired);
+            float meanTrafficShare        = Avg(runs, r => r.MeanPlayerTrafficShare);
+            float minTrafficShare         = Avg(runs, r => r.MinPlayerTrafficShare);
             // pocket-vs-coffers ratio: >1 means more skimmed than invested in town
             float skimToCoffersRatio = meanTotalCoffers > 0f ? meanTotalSkim / meanTotalCoffers : 0f;
 
@@ -506,7 +597,8 @@ public static class SimHarness
                 $"{wealthWinPct:F1},{auditPct:F1},{rivalPct:F1}," +
                 $"{meanPeakHeat:F1},{meanFirstHeat75:F1}," +
                 $"{meanFinalSafety:F3},{meanTotalSkim:F1},{meanTotalCoffers:F1}," +
-                $"{skimToCoffersRatio:F3},{meanEventsFired:F1}");
+                $"{skimToCoffersRatio:F3},{meanEventsFired:F1}," +
+                $"{meanTrafficShare:F3},{minTrafficShare:F3}");
         }
 
         File.WriteAllText(Path.Combine(dir, $"{sweepName}_metrics.csv"), sb.ToString());
@@ -547,6 +639,8 @@ public static class SimHarness
         public float  TotalSkimmed;
         public float  TotalCoffersContribution;
         public int    TotalEventsFired;
+        public float  MeanPlayerTrafficShare;
+        public float  MinPlayerTrafficShare;
         public List<TelemetryRecord> Telemetry;
     }
 
