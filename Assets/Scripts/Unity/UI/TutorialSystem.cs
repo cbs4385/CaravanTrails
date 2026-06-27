@@ -10,7 +10,7 @@ public class TutorialSystem : MonoBehaviour
 {
     // ── Tip catalogue ─────────────────────────────────────────────────────────
 
-    enum TipId { GameStart, HeatWarning, FirstEvent, CoffersLow, CrimeReady, WinHalfway, LegitimacyNote, RivalNetwork }
+    enum TipId { GameStart, HeatWarning, FirstEvent, CoffersLow, CrimeReady, WinHalfway, LegitimacyNote, RivalNetwork, TradeDeal }
 
     readonly struct TipData { public readonly TipId Id; public readonly string Body;
         public TipData(TipId id, string body) { Id = id; Body = body; } }
@@ -59,6 +59,12 @@ public class TutorialSystem : MonoBehaviour
             "Open the <b>World Map</b> to spy on their tax rates. " +
             "<b>Eastgate</b>'s prefect is greedy and already losing ground. " +
             "<b>Southford</b> keeps taxes low — don't ignore them."),
+
+        new TipData(TipId.TradeDeal,
+            "A rival prefect has offered a <b>Trade Delegation</b>!\n\n" +
+            "Option A costs §40 from your purse but activates an 8-tick traffic bonus — rival caravans " +
+            "reroute through your market, raising your income. The deal typically pays for itself in 2–3 ticks. " +
+            "Decline only if your purse cannot spare the fee right now."),
     };
 
     // ── Panel geometry ────────────────────────────────────────────────────────
@@ -128,6 +134,7 @@ public class TutorialSystem : MonoBehaviour
         TryQueue(TipId.WinHalfway,       state.Purse >= 1750f);
         TryQueue(TipId.LegitimacyNote,   state.Heat  > 28f  && coffersContribLastTick < 8f && state.Tick > 8);
         TryQueue(TipId.RivalNetwork,     state.Tick  > 4    && state.RivalTowns != null && state.RivalTowns.Length > 0);
+        TryQueue(TipId.TradeDeal,        lastEvent == GCEvents.EventType.TradeDelegation || state.TradeDealTicksRemaining > 0);
 
         if (_targetY < 0f && _queue.Count > 0) ShowNext();
     }

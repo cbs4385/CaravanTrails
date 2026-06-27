@@ -33,7 +33,7 @@ public class GameController : MonoBehaviour
 
     Slider _taxSl, _skimSl, _bribeSl, _unorgSl;
     Text   _taxVal, _skimVal, _bribeVal, _unorgVal;
-    Text   _tickTxt, _purseTxt, _coffersTxt, _legitTxt, _trafficShareTxt, _heatTxt;
+    Text   _tickTxt, _purseTxt, _coffersTxt, _legitTxt, _trafficShareTxt, _tradeDealTxt, _heatTxt;
     Text   _qualTxt, _safetyTxt, _repTxt, _orgLvTxt, _statusTxt;
     Text   _autoLbl;
     Text   _collUpgTxt, _heatUpgTxt, _connUpgTxt, _townUpgTxt, _routeUpgTxt;
@@ -215,6 +215,18 @@ public class GameController : MonoBehaviour
                 : lastShare > 0.28f
                     ? new Color(0.42f, 0.85f, 0.72f)
                     : new Color(0.82f, 0.72f, 0.48f);
+        }
+
+        if (s.TradeDealTicksRemaining > 0)
+        {
+            _tradeDealTxt.gameObject.SetActive(true);
+            float dealFrac = Mathf.Clamp01((float)s.TradeDealTicksRemaining / cfg.TradeDealDurationTicks);
+            _tradeDealTxt.text  = $"<color=#2ad4b0>Trade Deal</color>  {Bar(dealFrac)}  {s.TradeDealTicksRemaining} ticks";
+            _tradeDealTxt.color = new Color(0.16f, 0.83f, 0.69f);
+        }
+        else
+        {
+            _tradeDealTxt.gameObject.SetActive(false);
         }
 
         _qualTxt.text    = $"<color=#907050>Town</color>     {Bar(s.TownQuality)}  {s.TownQuality:P0}";
@@ -443,6 +455,7 @@ public class GameController : MonoBehaviour
         _legitTxt   = StatLine(rp, rx, tw, ref ry);
         _legitTxt.color = new Color(0.62f, 0.92f, 0.62f);
         _trafficShareTxt = StatLine(rp, rx, tw, ref ry);
+        _tradeDealTxt    = StatLine(rp, rx, tw, ref ry);
 
         ry -= 6f;
         BgImg(MkRT(rp, "Div1", rx, ry, tw - 24f, 1f), new Color(0.42f, 0.30f, 0.12f));
@@ -666,20 +679,23 @@ public class GameController : MonoBehaviour
         _goTitleTxt.text  = EndReasonTitle(s.EndReason);
         _goTitleTxt.color = _goIconTxt.color;
 
-        _goSubTxt.text = EndReasonFlavour(s.EndReason);
+        _goSubTxt.text = EndReasonFlavour(s);
 
-        int nAudit = 0, nRival = 0, nMerchant = 0, nInspector = 0;
+        int nAudit = 0, nRival = 0, nMerchant = 0, nInspector = 0, nTrade = 0, nDiverted = 0;
         foreach (var r in _sim.Telemetry)
         {
             if      (r.EventFired == GameCore.Events.EventType.AuditWarning)      nAudit++;
             else if (r.EventFired == GameCore.Events.EventType.RivalIncursion)    nRival++;
             else if (r.EventFired == GameCore.Events.EventType.MerchantComplaint) nMerchant++;
             else if (r.EventFired == GameCore.Events.EventType.InspectorVisit)    nInspector++;
+            else if (r.EventFired == GameCore.Events.EventType.TradeDelegation)   nTrade++;
+            else if (r.EventFired == GameCore.Events.EventType.DivertedCaravan)   nDiverted++;
         }
-        int nTotal = nAudit + nRival + nMerchant + nInspector;
+        int nTotal = nAudit + nRival + nMerchant + nInspector + nTrade + nDiverted;
         string eventLines = nTotal == 0 ? "" :
             $"\nEvents faced      {nTotal}  ({_eventsPaid} paid · {_eventsResisted} refused)\n" +
-            $"  Audit {nAudit}  Rival {nRival}  Guild {nMerchant}  Inspector {nInspector}";
+            $"  Audit {nAudit}  Rival {nRival}  Guild {nMerchant}  Inspect {nInspector}\n" +
+            $"  Trade deal {nTrade}  Diverted {nDiverted}";
 
         _goStatsTxt.text =
             $"Ticks survived    {s.Tick}\n" +
@@ -705,14 +721,25 @@ public class GameController : MonoBehaviour
         }
     }
 
-    static string EndReasonFlavour(EndReason r)
+    static string EndReasonFlavour(WorldState s)
     {
-        switch (r)
+        switch (s.EndReason)
         {
-            case EndReason.WealthWin:          return "A worthy Prefect of the Empire.";
+            case EndReason.WealthWin:
+            {
+                float maxShare = 0f;
+                if (s.RivalTowns != null)
+                    foreach (var r in s.RivalTowns)
+                        if (r.TrafficShare > maxShare) maxShare = r.TrafficShare;
+                if (maxShare > 0.30f)
+                    return "You enriched yourself despite fierce rival prefects. The Emperor is pleased.";
+                if (maxShare > 0.18f)
+                    return "You outmaneuvered the silk road's rival prefects. A worthy Prefect indeed.";
+                return "The route is yours. A worthy Prefect of the Empire.";
+            }
             case EndReason.AuditArrest:        return "The Imperial auditors have come for you.";
             case EndReason.BankruptcyCollapse: return "The treasury is empty. The town falters.";
-            case EndReason.RivalOverthrow:     return "A rival has seized the prefecture.";
+            case EndReason.RivalOverthrow:     return "A rival prefect has seized control of the route.";
             default:                           return "Your time in office is over.";
         }
     }
