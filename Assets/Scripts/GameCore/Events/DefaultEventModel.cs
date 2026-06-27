@@ -43,6 +43,20 @@ namespace GameCore.Events
             "A fastidious official with capital connections has taken up residence at the inn. He has been asking questions.",
         };
 
+        static readonly string[] s_tradeDelegationBodies =
+        {
+            "A richly dressed envoy from a neighboring prefecture has arrived with a proposal: a formal trade compact, agreed tolls, and shared access to each other's merchant networks.",
+            "The prefect of a prospering rival town has dispatched ambassadors bearing gifts of saffron and silk. Their offer: a short-term commerce arrangement, fees split between both treasuries.",
+            "An official delegation arrived at the palace gate at dawn. A rival prefect, flush with route revenue, proposes a mutual trade deal.",
+        };
+
+        static readonly string[] s_divertedCaravanBodies =
+        {
+            "Three large merchant trains that usually pass through your market have taken a rival route this season, drawn by lower tolls and fresher roads.",
+            "Word from your road wardens: a string of caravans bypassed your tollgate this week. A competing prefecture's rates undercut yours.",
+            "Your customs clerks report a shortfall. Several well-established merchant houses have quietly rerouted to a rival town offering better terms.",
+        };
+
         // ── IEventModel ───────────────────────────────────────────────────────
 
         public PendingEvent TryFireEvent(WorldState state, SimConfig config, Random rng)
@@ -73,6 +87,22 @@ namespace GameCore.Events
             if (state.Reputation < config.MerchantComplaintRepThreshold
                 && rng.NextDouble() < config.MerchantComplaintChance)
                 return MakeMerchantComplaint(config, rng);
+
+            if (state.RivalTowns != null)
+            {
+                float maxShare = 0f;
+                foreach (var r in state.RivalTowns)
+                    if (r.TrafficShare > maxShare) maxShare = r.TrafficShare;
+
+                if (maxShare > config.TradeDelegationMinRivalShare
+                    && state.TradeDealTicksRemaining <= 0
+                    && rng.NextDouble() < config.TradeDelegationChance)
+                    return MakeTradeDelegation(config, rng);
+
+                if (maxShare > config.DivertedCaravanMinRivalShare
+                    && rng.NextDouble() < config.DivertedCaravanChance)
+                    return MakeDivertedCaravan(config, rng);
+            }
 
             return null;
         }
@@ -125,6 +155,27 @@ namespace GameCore.Events
                         else
                         {
                             state.Heat += config.InspectorStonewallHeatPenalty;
+                        }
+                        break;
+
+                    case EventType.TradeDelegation:
+                        if (choice == EventOption.OptionA)
+                        {
+                            state.Purse = Math.Max(0f, state.Purse - config.TradeDelegationFee);
+                            state.TradeDealTicksRemaining = config.TradeDealDurationTicks;
+                        }
+                        // OptionB: politely declined — no penalty
+                        break;
+
+                    case EventType.DivertedCaravan:
+                        if (choice == EventOption.OptionA)
+                        {
+                            state.Purse   = Math.Max(0f, state.Purse   - config.DivertedCaravanDispatchCost);
+                            state.Safety  = Math.Min(1f, state.Safety  + config.DivertedCaravanDispatchSafetyBonus);
+                        }
+                        else
+                        {
+                            state.Safety  = Math.Max(0f, state.Safety  - config.DivertedCaravanAcceptSafetyPenalty);
                         }
                         break;
                 }
@@ -181,6 +232,28 @@ namespace GameCore.Events
             OptionBLabel = $"Stonewall  (+{c.InspectorStonewallHeatPenalty:0} heat)",
             OptionACost  = c.InspectorGiftCost,
             OptionBEffect= c.InspectorStonewallHeatPenalty,
+        };
+
+        static PendingEvent MakeTradeDelegation(SimConfig c, Random rng) => new PendingEvent
+        {
+            Type         = EventType.TradeDelegation,
+            Headline     = "Trade Delegation Arrives",
+            BodyText     = s_tradeDelegationBodies[rng.Next(s_tradeDelegationBodies.Length)],
+            OptionALabel = $"Sign the compact  (-§{c.TradeDelegationFee:0} purse, +{c.TradeDealDurationTicks} ticks traffic bonus)",
+            OptionBLabel = "Decline the offer  (no effect)",
+            OptionACost  = c.TradeDelegationFee,
+            OptionBEffect= 0f,
+        };
+
+        static PendingEvent MakeDivertedCaravan(SimConfig c, Random rng) => new PendingEvent
+        {
+            Type         = EventType.DivertedCaravan,
+            Headline     = "Caravan Route Diverted",
+            BodyText     = s_divertedCaravanBodies[rng.Next(s_divertedCaravanBodies.Length)],
+            OptionALabel = $"Dispatch escorts  (-§{c.DivertedCaravanDispatchCost:0} purse, +{c.DivertedCaravanDispatchSafetyBonus:P0} safety)",
+            OptionBLabel = $"Accept the loss  (-{c.DivertedCaravanAcceptSafetyPenalty:P0} safety)",
+            OptionACost  = c.DivertedCaravanDispatchCost,
+            OptionBEffect= c.DivertedCaravanAcceptSafetyPenalty,
         };
     }
 }

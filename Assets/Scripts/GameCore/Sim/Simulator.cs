@@ -65,6 +65,12 @@ namespace GameCore.Sim
             ctx.RouteAttractiveness = TrafficModel.ComputeAttractiveness(s, input.TaxRate, Config)
                 + s.RouteImprovementLevel * Config.UpgradeRouteImprovementAttractivenessPerLevel;
 
+            if (s.TradeDealTicksRemaining > 0)
+            {
+                ctx.RouteAttractiveness += Config.TradeDealAttractivenessBonus;
+                s.TradeDealTicksRemaining--;
+            }
+
             float rivalSumA = 0f;
             if (Config.EnableRivals && s.RivalTowns != null)
                 foreach (var r in s.RivalTowns)

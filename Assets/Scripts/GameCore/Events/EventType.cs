@@ -7,5 +7,7 @@ namespace GameCore.Events
         RivalIncursion,
         MerchantComplaint,
         InspectorVisit,
+        TradeDelegation,
+        DivertedCaravan,
     }
 }

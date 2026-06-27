@@ -120,5 +120,19 @@ namespace GameCore.Sim
         public float InspectorGiftCost                     = 60f;
         public float InspectorGiftHeatReduction            = 30f;
         public float InspectorStonewallHeatPenalty         = 20f;
+
+        // §trade delegation — rival prefect offers a commerce deal when they're strong
+        public float TradeDelegationChance                 = 0.06f;
+        public float TradeDelegationMinRivalShare          = 0.18f;  // rival must hold at least this share
+        public float TradeDelegationFee                    = 40f;
+        public float TradeDealAttractivenessBonus          = 0.25f;  // flat bonus added to route attractiveness
+        public int   TradeDealDurationTicks                = 8;
+
+        // §diverted caravan — rival undercuts traffic when they hold a dominant share
+        public float DivertedCaravanChance                 = 0.04f;
+        public float DivertedCaravanMinRivalShare          = 0.26f;  // rival must hold at least this share
+        public float DivertedCaravanDispatchCost           = 35f;
+        public float DivertedCaravanDispatchSafetyBonus   = 0.04f;
+        public float DivertedCaravanAcceptSafetyPenalty   = 0.03f;
     }
 }

@@ -39,6 +39,9 @@ namespace GameCore.Sim
         // Rival towns competing for road traffic (null when EnableRivals = false)
         public RivalTownState[] RivalTowns;
 
+        // Ticks remaining on an active trade deal (0 = no deal active)
+        public int TradeDealTicksRemaining;
+
         public WorldState Clone()
         {
             var c = (WorldState)MemberwiseClone();
