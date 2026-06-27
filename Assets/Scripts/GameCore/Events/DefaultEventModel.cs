@@ -21,6 +21,14 @@ namespace GameCore.Events
             "A well-dressed stranger left a sealed note at the palace gate. The terms are clear: tribute, or consequences.",
         };
 
+        // Fired when a rival town holds a dominant traffic share — they have the coin to back the threat.
+        static readonly string[] s_rivalBodiesHigh =
+        {
+            "A rival prefecture is flush with diverted trade revenue — their criminal arm now has the reach to threaten yours.",
+            "With merchant caravans bypassing your town, a bolder rival organization has moved in to press an advantage.",
+            "Your informants confirm it: a rival prefect, enriched by growing route traffic, is funding enforcers against your operation.",
+        };
+
         static readonly string[] s_merchantBodies =
         {
             "The guild master has filed a formal protest: traders are avoiding the route due to extortion.",
@@ -50,9 +58,17 @@ namespace GameCore.Events
                 && rng.NextDouble() < config.AuditWarningChance)
                 return MakeAuditWarning(config, rng);
 
-            if (state.OrganizedCrimeLevel >= 1
-                && rng.NextDouble() < config.RivalIncursionChance)
-                return MakeRivalIncursion(config, rng);
+            if (state.OrganizedCrimeLevel >= 1)
+            {
+                float maxRivalShare = 0f;
+                if (state.RivalTowns != null)
+                    foreach (var r in state.RivalTowns)
+                        if (r.TrafficShare > maxRivalShare) maxRivalShare = r.TrafficShare;
+                float incursionChance = config.RivalIncursionChance
+                    + maxRivalShare * config.RivalIncursionPressurePerSharePoint;
+                if (rng.NextDouble() < incursionChance)
+                    return MakeRivalIncursion(config, rng, maxRivalShare);
+            }
 
             if (state.Reputation < config.MerchantComplaintRepThreshold
                 && rng.NextDouble() < config.MerchantComplaintChance)
@@ -130,16 +146,20 @@ namespace GameCore.Events
             OptionBEffect= c.AuditWarningIgnoreHeatPenalty,
         };
 
-        static PendingEvent MakeRivalIncursion(SimConfig c, Random rng) => new PendingEvent
+        static PendingEvent MakeRivalIncursion(SimConfig c, Random rng, float maxRivalShare = 0f)
         {
-            Type         = EventType.RivalIncursion,
-            Headline     = "Rival Gang Demands Tribute",
-            BodyText     = s_rivalBodies[rng.Next(s_rivalBodies.Length)],
-            OptionALabel = $"Pay tribute  (-§{c.RivalIncursionTributeCost:0} purse)",
-            OptionBLabel = $"Refuse  (-{c.RivalIncursionRefuseSafetyPenalty:P0} safety)",
-            OptionACost  = c.RivalIncursionTributeCost,
-            OptionBEffect= c.RivalIncursionRefuseSafetyPenalty,
-        };
+            var pool = maxRivalShare > 0.24f ? s_rivalBodiesHigh : s_rivalBodies;
+            return new PendingEvent
+            {
+                Type         = EventType.RivalIncursion,
+                Headline     = "Rival Gang Demands Tribute",
+                BodyText     = pool[rng.Next(pool.Length)],
+                OptionALabel = $"Pay tribute  (-§{c.RivalIncursionTributeCost:0} purse)",
+                OptionBLabel = $"Refuse  (-{c.RivalIncursionRefuseSafetyPenalty:P0} safety)",
+                OptionACost  = c.RivalIncursionTributeCost,
+                OptionBEffect= c.RivalIncursionRefuseSafetyPenalty,
+            };
+        }
 
         static PendingEvent MakeMerchantComplaint(SimConfig c, Random rng) => new PendingEvent
         {

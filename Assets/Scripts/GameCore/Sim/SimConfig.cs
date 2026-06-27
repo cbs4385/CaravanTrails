@@ -105,6 +105,9 @@ namespace GameCore.Sim
         public float AuditWarningBribeHeatReduction        = 20f;
         public float AuditWarningIgnoreHeatPenalty         = 12f;
         public float RivalIncursionChance                  = 0.10f;
+        // Each percentage point of a rival's traffic share adds this much to incursion chance.
+        // A rival at 25% share adds +0.075 → total chance 17.5%; at 35% → +0.105 → 20.5%.
+        public float RivalIncursionPressurePerSharePoint   = 0.30f;
         public float RivalIncursionTributeCost             = 50f;
         public float RivalIncursionRefuseSafetyPenalty     = 0.08f;
         public float MerchantComplaintRepThreshold         = 0.45f;
